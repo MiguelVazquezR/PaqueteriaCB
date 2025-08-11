@@ -5,22 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class ConcreteHoliday extends Model
+class IncidentType extends Model
 {
     use HasFactory;
     public $timestamps = false;
 
     protected $fillable = [
-        'holiday_rule_id',
-        'date',
+        'name',
+        'code',
     ];
 
-    protected $casts = [
-        'date' => 'date',
-    ];
-
-    public function holidayRule()
+    public function incidents()
     {
-        return $this->belongsTo(HolidayRule::class);
+        return $this->hasMany(Incident::class);
     }
 }

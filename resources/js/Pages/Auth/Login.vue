@@ -7,15 +7,25 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import { ref } from 'vue';
 
 defineProps({
     canResetPassword: Boolean,
     status: String,
 });
 
+const cities = ref([
+    { name: 'New York', id: 1 },
+    { name: 'Los Angeles', id: 2 },
+    { name: 'Chicago', id: 3 },
+    { name: 'Houston', id: 4 },
+    { name: 'Phoenix', id: 5 },
+]);
+
 const form = useForm({
     email: '',
     password: '',
+    selectedCity: '',
     remember: false,
 });
 
@@ -42,6 +52,7 @@ const submit = () => {
         </div>
 
         <form @submit.prevent="submit">
+            <Select v-model="form.selectedCity" :options="cities" checkmark optionLabel="name" placeholder="Select a City" class="w-full md:w-56" />
             <div>
                 <InputLabel for="email" value="Email" />
                 <TextInput

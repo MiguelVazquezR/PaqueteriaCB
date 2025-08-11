@@ -11,15 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('employee_schedule', function (Blueprint $table) {
+        Schema::create('employee_bonus', function (Blueprint $table) {
             $table->id();
             $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
-            $table->foreignId('schedule_id')->constrained('schedules')->cascadeOnDelete();
-            $table->date('start_date');
-            $table->date('end_date')->nullable();
+            $table->foreignId('bonus_id')->constrained('bonuses')->cascadeOnDelete();
+            $table->foreignId('payroll_id')->constrained('payrolls')->cascadeOnDelete();
+            $table->decimal('applied_amount', 10, 2);
             $table->timestamps();
-
-            $table->unique(['employee_id', 'schedule_id', 'start_date']);
         });
     }
 
@@ -28,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('employee_schedule');
+        Schema::dropIfExists('employee_bonus');
     }
 };

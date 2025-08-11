@@ -5,22 +5,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class ConcreteHoliday extends Model
+class ScheduleDetail extends Model
 {
     use HasFactory;
+
     public $timestamps = false;
 
     protected $fillable = [
-        'holiday_rule_id',
-        'date',
+        'schedule_id',
+        'day_of_week',
+        'start_time',
+        'end_time',
+        'meal_minutes',
     ];
 
-    protected $casts = [
-        'date' => 'date',
-    ];
-
-    public function holidayRule()
+    public function schedule()
     {
-        return $this->belongsTo(HolidayRule::class);
+        return $this->belongsTo(Schedule::class);
     }
 }

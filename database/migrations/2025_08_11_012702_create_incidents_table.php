@@ -11,15 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('employee_schedule', function (Blueprint $table) {
+        Schema::create('incidents', function (Blueprint $table) {
             $table->id();
             $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
-            $table->foreignId('schedule_id')->constrained('schedules')->cascadeOnDelete();
-            $table->date('start_date');
-            $table->date('end_date')->nullable();
+            $table->foreignId('incident_type_id')->constrained('incident_types');
+            $table->foreignId('approved_by_user_id')->nullable()->constrained('users');
+            $table->dateTime('start_date');
+            $table->dateTime('end_date')->nullable();
+            $table->text('notes')->nullable();
+            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
             $table->timestamps();
-
-            $table->unique(['employee_id', 'schedule_id', 'start_date']);
         });
     }
 
@@ -28,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('employee_schedule');
+        Schema::dropIfExists('incidents');
     }
 };

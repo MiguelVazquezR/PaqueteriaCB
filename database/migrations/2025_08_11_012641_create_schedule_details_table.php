@@ -11,15 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('employee_schedule', function (Blueprint $table) {
+        Schema::create('schedule_details', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
             $table->foreignId('schedule_id')->constrained('schedules')->cascadeOnDelete();
-            $table->date('start_date');
-            $table->date('end_date')->nullable();
-            $table->timestamps();
-
-            $table->unique(['employee_id', 'schedule_id', 'start_date']);
+            $table->unsignedTinyInteger('day_of_week'); // 1: Lunes, 7: Domingo
+            $table->time('start_time');
+            $table->time('end_time');
+            $table->unsignedInteger('meal_minutes')->default(0);
         });
     }
 
@@ -28,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('employee_schedule');
+        Schema::dropIfExists('schedule_details');
     }
 };

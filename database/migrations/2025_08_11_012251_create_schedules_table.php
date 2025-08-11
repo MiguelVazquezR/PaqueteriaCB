@@ -11,11 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('concrete_holidays', function (Blueprint $table) {
+        Schema::create('schedules', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('holiday_rule_id')->constrained('holiday_rules')->cascadeOnDelete();
-            $table->date('date');
-            $table->unique(['holiday_rule_id', 'date']);
+            $table->string('name');
+            $table->timestamps();
         });
     }
 
@@ -24,6 +23,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('concrete_holidays');
+        Schema::dropIfExists('schedules');
     }
 };
