@@ -13,7 +13,9 @@ return new class extends Migration
     {
         Schema::create('concrete_holidays', function (Blueprint $table) {
             $table->id();
-            $table->timestamps();
+            $table->foreignId('holiday_rule_id')->constrained('holiday_rules')->cascadeOnDelete();
+            $table->date('date');
+            $table->unique(['holiday_rule_id', 'date']);
         });
     }
 

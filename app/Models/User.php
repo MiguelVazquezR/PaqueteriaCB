@@ -64,4 +64,12 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * Obtiene el perfil de empleado asociado con el usuario.
+     */
+    public function employee()
+    {
+        return $this->hasOne(Employee::class);
+    }
 }
