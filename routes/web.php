@@ -22,3 +22,16 @@ Route::middleware([
         return Inertia::render('Dashboard');
     })->name('dashboard');
 });
+
+Route::middleware('auth')->group(function () {
+    require __DIR__.'/web/attendances.php';
+    require __DIR__.'/web/bonuses.php';
+    require __DIR__.'/web/branches.php';
+    require __DIR__.'/web/employees.php';
+    require __DIR__.'/web/holidays.php';
+    require __DIR__.'/web/incidents.php';
+    require __DIR__.'/web/payrolls.php';
+    require __DIR__.'/web/schedules.php';
+    require __DIR__.'/web/settings.php';
+    require __DIR__.'/web/users.php';
+});
