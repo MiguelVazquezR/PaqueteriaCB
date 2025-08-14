@@ -6,11 +6,12 @@ import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import PrimeVue from 'primevue/config';
-import "primeicons/primeicons.css";
+import ConfirmationService from 'primevue/confirmationservice';
+import ToastService from 'primevue/toastservice';
 import Aura from '@primeuix/themes/aura';
-// import Material from '@primeuix/themes/material';
-// import Lara from '@primeuix/themes/lara';
-// import Nora from '@primeuix/themes/nora';
+import "primeicons/primeicons.css";
+
+import '@/assets/styles.scss';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -23,12 +24,14 @@ createInertiaApp({
             .use(ZiggyVue)
             .use(PrimeVue, {
                 theme: {
-                    preset: Aura
-                    // preset: Material
-                    // preset: Lara
-                    // preset: Nora
+                    preset: Aura,
+                    options: {
+                        darkModeSelector: '.app-dark'
+                    }
                 }
             })
+            .use(ToastService)
+            .use(ConfirmationService)
             .mount(el);
     },
     progress: {

@@ -1,21 +1,9 @@
 <script setup>
-import { Head, Link, router } from '@inertiajs/vue3';
-import { useLayout } from '@/Layouts/composables/layout';
+import { useLayout } from '@/layout/composables/layout';
 import { computed, ref, watch } from 'vue';
 import AppFooter from './AppFooter.vue';
 import AppSidebar from './AppSidebar.vue';
 import AppTopbar from './AppTopbar.vue';
-import ApplicationMark from '@/Components/ApplicationMark.vue';
-import Dropdown from '@/Components/Dropdown.vue';
-import DropdownLink from '@/Components/DropdownLink.vue';
-import NavLink from '@/Components/NavLink.vue';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
-
-defineProps({
-    title: String,
-});
-
-const showingNavigationDropdown = ref(false);
 
 const { layoutConfig, layoutState, isSidebarActive } = useLayout();
 
@@ -65,22 +53,16 @@ function isOutsideClicked(event) {
 
     return !(sidebarEl.isSameNode(event.target) || sidebarEl.contains(event.target) || topbarEl.isSameNode(event.target) || topbarEl.contains(event.target));
 }
-
-const logout = () => {
-    router.post(route('logout'));
-};
 </script>
 
 <template>
     <div class="layout-wrapper" :class="containerClass">
-
-        <Head :title="title" />
         <app-topbar></app-topbar>
         <app-sidebar></app-sidebar>
         <div class="layout-main-container">
-            <main class="layout-main">
-                <slot />
-            </main>
+            <div class="layout-main">
+                <router-view></router-view>
+            </div>
             <app-footer></app-footer>
         </div>
         <div class="layout-mask animate-fadein"></div>
