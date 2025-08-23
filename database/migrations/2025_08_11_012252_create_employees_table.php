@@ -22,6 +22,15 @@ return new class extends Migration
             $table->date('hire_date');
             $table->decimal('base_salary', 10, 2);
             $table->string('aws_rekognition_face_id')->nullable();
+            $table->string('phone')->nullable();
+            $table->date('birth_date')->nullable();
+            $table->string('address')->nullable();
+            $table->string('curp')->nullable()->unique();
+            $table->string('rfc')->nullable()->unique();
+            $table->string('nss')->nullable()->unique(); // Número de Seguridad Social
+            $table->string('emergency_contact_name')->nullable();
+            $table->string('emergency_contact_phone')->nullable();
+            $table->string('emergency_contact_relationship')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });

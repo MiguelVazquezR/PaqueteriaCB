@@ -204,5 +204,12 @@ return [
         'service_cost' => 'costo de servicio',
         'payment_method' => 'método de pago',
         'observations' => '',
+        'first_name' => 'nombres',
+        'last_name' => 'apellidos',
+        'employee_number' => 'número de empleado',
+        'hire_date' => 'fecha de contratación',
+        'branch_id' => 'sucursal',
+        'base_salary' => 'salario base',
+        'position' => 'puesto',
     ],
 ];

@@ -20,10 +20,20 @@ class Employee extends Model
         'base_salary',
         'aws_rekognition_face_id',
         'is_active',
+        'phone',
+        'birth_date',
+        'address',
+        'curp',
+        'rfc',
+        'nss',
+        'emergency_contact_name',
+        'emergency_contact_phone',
+        'emergency_contact_relationship',
     ];
 
     protected $casts = [
         'hire_date' => 'date',
+        'birth_date' => 'date',
         'is_active' => 'boolean',
         'base_salary' => 'decimal:2',
     ];
