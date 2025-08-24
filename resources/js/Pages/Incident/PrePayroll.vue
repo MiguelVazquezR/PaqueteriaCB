@@ -1,0 +1,122 @@
+<script setup>
+import { ref } from 'vue';
+import { Head } from '@inertiajs/vue3';
+import AppLayout from '@/Layouts/AppLayout.vue';
+import { format } from 'date-fns';
+import es from 'date-fns/locale/es';
+
+// --- Props ---
+const props = defineProps({
+    period: Object,
+    reportData: Object,
+});
+
+// --- Refs and State ---
+const home = ref({ icon: 'pi pi-home', url: route('dashboard') });
+const items = ref([
+    { label: 'Incidencias', url: route('incidents.index') },
+    { label: `Semana ${props.period.week_number}`, url: route('incidents.show', props.period.id) },
+    { label: 'Prenómina' }
+]);
+
+// --- Methods ---
+const formatDate = (dateString, formatStr = "EEEE dd 'de' MMMM 'de' yyyy") => {
+    if (!dateString) return '';
+    return format(new Date(dateString), formatStr, { locale: es });
+};
+
+const printReport = () => {
+    window.print();
+};
+
+</script>
+
+<template>
+
+    <Head :title="`Prenómina - Semana ${period.week_number}`" />
+
+    <AppLayout>
+        <Breadcrumb :home="home" :model="items" class="!bg-transparent print:hidden" />
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
+                <!-- HEADER -->
+                <div class="flex justify-between items-start pb-4 border-b">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Reporte de incidencias para
+                            nómina</h1>
+                        <!-- <p class="text-gray-500">Periodo: {{ formatDate(period.start_date) }} - {{ formatDate(period.end_date) }}</p> -->
+                        <p class="text-gray-500">Periodo: {{ period.start_date }} - {{ period.end_date }}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold">Paquetería Casa Blanca</p>
+                        <!-- <p class="text-sm text-gray-500">Generado {{ formatDate(new Date(), "dd MMMM yyyy, hh:mm a") }}</p> -->
+                        <p class="text-sm text-gray-500">Generado {{ new Date(), "dd MMMM yyyy, hh:mm a" }}</p>
+                    </div>
+                </div>
+                <div class="flex justify-end mt-4 print:hidden">
+                    <Button label="Imprimir o guardar en PDF" icon="pi pi-print" @click="printReport" />
+                </div>
+
+                <!-- TABLAS POR SUCURSAL -->
+                <div v-for="(employees, branchName) in reportData" :key="branchName" class="mt-8">
+                    <div class="bg-gray-100 dark:bg-gray-700 p-3 rounded-t-lg">
+                        <h2 class="font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                            <i class="pi pi-building"></i>
+                            <span>Sucursal {{ branchName }}</span>
+                        </h2>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead
+                                class="bg-gray-50 dark:bg-gray-700 text-xs text-gray-700 dark:text-gray-400 uppercase">
+                                <tr>
+                                    <th class="px-4 py-3">N° empleado</th>
+                                    <th class="px-4 py-3">Colaborador</th>
+                                    <th class="px-4 py-3">Días a pagar</th>
+                                    <th class="px-4 py-3">Incidencias</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="employee in employees" :key="employee.id"
+                                    class="border-b dark:border-gray-700">
+                                    <td class="px-4 py-3 font-medium">{{ employee.employee_number }}</td>
+                                    <td class="px-4 py-3">{{ employee.name }}</td>
+                                    <td class="px-4 py-3">{{ employee.days_to_pay }}</td>
+                                    <td class="px-4 py-3">
+                                        <ul v-if="employee.incidents.length" class="list-disc list-inside">
+                                            <li v-for="(incident, index) in employee.incidents" :key="index">{{ incident
+                                                }}</li>
+                                        </ul>
+                                        <span v-else class="text-gray-400">-</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </AppLayout>
+</template>
+
+<style>
+@media print {
+    body * {
+        visibility: hidden;
+    }
+
+    .max-w-4xl,
+    .max-w-4xl * {
+        visibility: visible;
+    }
+
+    .max-w-4xl {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+}
+</style>

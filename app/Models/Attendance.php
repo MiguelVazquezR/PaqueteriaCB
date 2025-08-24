@@ -13,9 +13,10 @@ class Attendance extends Model
         'employee_id',
         'created_by_user_id',
         'type',
+        'image_path',
+        'created_at',
         'late_minutes',
         'late_ignored',
-        'image_path',
     ];
 
     public function employee()

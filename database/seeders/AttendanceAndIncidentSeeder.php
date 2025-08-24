@@ -29,7 +29,18 @@ class AttendanceAndIncidentSeeder extends Seeder
                 $dateRange = CarbonPeriod::create($period->start_date, $period->end_date);
 
                 foreach ($dateRange as $date) {
-                    // ... (la lógica de incidencias se mantiene igual)
+                    // 5% de probabilidad de tener una incidencia en un día laborable
+                    if ($date->isWeekday() && rand(1, 100) <= 5) {
+                        $randomIncidentType = $incidentTypes->whereNotIn('code', ['DESC', 'FESTIVO'])->random();
+                        Incident::create([
+                            'employee_id' => $employee->id,
+                            'incident_type_id' => $randomIncidentType->id,
+                            'start_date' => $date,
+                            'end_date' => $date,
+                            'status' => 'approved',
+                        ]);
+                        continue;
+                    }
 
                     // Generar asistencia para días laborables sin incidencia
                     if ($date->isWeekday()) {
@@ -51,6 +62,25 @@ class AttendanceAndIncidentSeeder extends Seeder
                             'created_at' => $entryTime,
                             'late_minutes' => $lateMinutes, // Se añade el valor aquí
                         ]);
+
+                        // 80% de probabilidad de tomar un descanso para comer
+                        if (rand(1, 100) <= 80) {
+                            // El descanso empieza entre las 13:00 y las 14:00
+                            $breakStartTime = $date->copy()->setTime(13, 0, 0)->addMinutes(rand(0, 60));
+                            Attendance::create([
+                                'employee_id' => $employee->id,
+                                'type' => 'break_start',
+                                'created_at' => $breakStartTime,
+                            ]);
+
+                            // El descanso dura entre 30 y 60 minutos
+                            $breakEndTime = $breakStartTime->copy()->addMinutes(rand(30, 60));
+                            Attendance::create([
+                                'employee_id' => $employee->id,
+                                'type' => 'break_end',
+                                'created_at' => $breakEndTime,
+                            ]);
+                        }
 
                         // Salida
                         $exitTime = $date->copy()->setTime(18, 0, 0)->addMinutes(rand(-15, 15));

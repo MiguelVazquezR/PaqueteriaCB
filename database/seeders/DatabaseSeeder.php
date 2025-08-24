@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             UserEmployeeSeeder::class,
             IncidentTypeSeeder::class,
             PayrollPeriodSeeder::class,
+            ScheduleSeeder::class,
             AttendanceAndIncidentSeeder::class,
         ]);
     }

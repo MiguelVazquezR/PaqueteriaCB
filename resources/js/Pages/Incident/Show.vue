@@ -1,8 +1,10 @@
 <script setup>
-import { ref, watch } from 'vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { ref, watch, computed } from 'vue';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { debounce } from 'lodash';
+import { format } from 'date-fns';
+import es from 'date-fns/locale/es';
 
 // --- Props ---
 const props = defineProps({
@@ -22,11 +24,37 @@ const items = ref([
 ]);
 const search = ref(props.filters.search);
 const selectedBranch = ref(props.filters.branch_id);
+const menu = ref();
+const selectedDayMenu = ref(null);
+
+// State para el modal de comentarios
 const commentModalVisible = ref(false);
 const currentEmployeeForComment = ref(null);
 const commentText = ref('');
-const menu = ref();
-const selectedDayMenu = ref(null);
+
+// ✨ State para el modal de edición de asistencia
+const attendanceModalVisible = ref(false);
+const currentDayForEdit = ref(null);
+const currentEmployeeForEdit = ref(null);
+const attendanceForm = useForm({
+    employee_id: null,
+    date: null,
+    entry_time: null,
+    exit_time: null,
+});
+
+// ✨ State para el panel de resumen de descansos
+const op = ref();
+const selectedBreaks = ref([]);
+
+const splitButtonItems = ref([
+    {
+        label: 'Imprimir incidencias',
+        command: () => {
+            window.print();
+        }
+    }
+]);
 
 // --- Watchers ---
 watch([search, selectedBranch], debounce(() => {
@@ -40,8 +68,18 @@ watch([search, selectedBranch], debounce(() => {
     });
 }, 300));
 
+// --- Computed Properties ---
+const totalSelectedBreakTime = computed(() => {
+    return selectedBreaks.value.reduce((total, item) => total + item.duration, 0);
+});
 
-// --- Methods ---
+// --- Métodos ---
+const formatDate = (dateString, formatStr = "EEEE, dd 'de' MMMM") => {
+    if (!dateString) return '';
+    return format(dateString, formatStr, { locale: es });
+};
+
+// --- Métodos para Comentarios ---
 const openCommentModal = (employee) => {
     currentEmployeeForComment.value = employee;
     commentText.value = employee.comments;
@@ -61,6 +99,7 @@ const saveComment = () => {
     });
 };
 
+// --- Métodos para Incidencias ---
 const addIncident = (employee, day, incidentTypeId) => {
     router.post(route('incidents.storeDayIncident'), {
         employee_id: employee.id,
@@ -80,6 +119,7 @@ const removeIncident = (employee, day) => {
     });
 };
 
+// --- Métodos para Retardos ---
 const toggleLateStatus = (day) => {
     router.post(route('incidents.toggleLateStatus'), {
         entry_id: day.entry_id,
@@ -88,33 +128,81 @@ const toggleLateStatus = (day) => {
     });
 };
 
+// Métodos para Edición de Asistencia ---
+const openAttendanceModal = (day, employee) => {
+    currentDayForEdit.value = day;
+    currentEmployeeForEdit.value = employee;
+
+    // Función auxiliar para convertir una cadena 'HH:mm' a un objeto Date
+    const createDateFromTime = (timeString) => {
+        if (!timeString) return null;
+        // Creamos una fecha base con el día correcto
+        const date = new Date(day.date + 'T00:00:00');
+        // Extraemos las horas y minutos de la cadena
+        const [hours, minutes] = timeString.split(':');
+        // Establecemos la hora y los minutos en el objeto Date
+        date.setHours(parseInt(hours, 10), parseInt(minutes, 10));
+        return date;
+    };
+
+    attendanceForm.employee_id = employee.id;
+    attendanceForm.date = day.date;
+    // Usamos la función auxiliar para poblar el formulario con objetos Date válidos
+    attendanceForm.entry_time = createDateFromTime(day.entry_time_raw);
+    attendanceForm.exit_time = createDateFromTime(day.exit_time_raw);
+
+    attendanceModalVisible.value = true;
+};
+
+const saveAttendance = () => {
+    // Usamos transform para formatear los datos justo antes de enviarlos.
+    attendanceForm.transform((data) => {
+        const formattedData = { ...data };
+
+        // Si entry_time es un objeto Date (del DatePicker), lo formateamos.
+        if (data.entry_time instanceof Date) {
+            formattedData.entry_time = format(data.entry_time, 'HH:mm');
+        }
+        // Si exit_time es un objeto Date, lo formateamos.
+        if (data.exit_time instanceof Date) {
+            formattedData.exit_time = format(data.exit_time, 'HH:mm');
+        }
+
+        return formattedData;
+    }).post(route('incidents.updateAttendance'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            attendanceModalVisible.value = false;
+            attendanceForm.reset();
+        }
+    });
+};
+
+// método para mostrar el resumen de descansos
+const toggleBreakSummary = (event, breaks) => {
+    selectedBreaks.value = breaks;
+    op.value.toggle(event);
+};
+
 const toggleDayMenu = (event, day, employee) => {
     let menuItems = [];
 
     // Lógica para "Quitar/Poner retardo"
     if (day.late_minutes && !day.late_ignored) {
-        menuItems.push({
-            label: 'Quitar retardo',
-            icon: 'pi pi-check-circle',
-            command: () => toggleLateStatus(day)
-        });
+        menuItems.push({ label: 'Quitar retardo', icon: 'pi pi-check-circle', command: () => toggleLateStatus(day) });
     }
     if (day.late_minutes && day.late_ignored) {
-        menuItems.push({
-            label: 'Poner retardo',
-            icon: 'pi pi-exclamation-circle',
-            command: () => toggleLateStatus(day)
-        });
+        menuItems.push({ label: 'Poner retardo', icon: 'pi pi-exclamation-circle', command: () => toggleLateStatus(day) });
+    }
+
+    // Lógica para "Modificar registro"
+    if (!day.incident) {
+        menuItems.push({ label: 'Modificar registro', icon: 'pi pi-pencil', command: () => openAttendanceModal(day, employee) });
     }
 
     // Lógica para incidencias
     if (day.incident) {
-        menuItems.push({
-            label: 'Quitar incidencia',
-            icon: 'pi pi-times-circle',
-            class: 'p-menuitem-text-danger',
-            command: () => removeIncident(employee, day)
-        });
+        menuItems.push({ label: 'Quitar incidencia', icon: 'pi pi-times-circle', class: 'p-menuitem-text-danger', command: () => removeIncident(employee, day) });
     }
 
     if (menuItems.length > 0) {
@@ -123,10 +211,7 @@ const toggleDayMenu = (event, day, employee) => {
 
     // Opciones generales
     props.incidentTypes.forEach(type => {
-        menuItems.push({
-            label: type.name,
-            command: () => addIncident(employee, day, type.id)
-        });
+        menuItems.push({ label: type.name, command: () => addIncident(employee, day, type.id) });
     });
 
     selectedDayMenu.value = menuItems;
@@ -164,7 +249,7 @@ const getIncidentSeverity = (incidentName) => {
                             @click="navigation.previous_period_id && router.get(route('incidents.show', navigation.previous_period_id))" />
                         <div>
                             <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Semana {{ period.week_number
-                            }}</h1>
+                                }}</h1>
                             <p class="text-sm text-gray-500">{{ period.start_date_formatted_short }} - {{
                                 period.end_date_formatted_full }}</p>
                         </div>
@@ -180,8 +265,8 @@ const getIncidentSeverity = (incidentName) => {
                         </IconField>
                     </div>
                     <div class="flex items-center gap-2 mt-4 md:mt-0">
-                        <Button label="Imprimir incidencias" severity="secondary" outlined />
-                        <Button label="Generar pre-nómina" icon="pi pi-angle-down" iconPos="right" />
+                        <SplitButton label="Generar pre-nómina" :model="splitButtonItems"
+                            @click="router.get(route('incidents.prePayroll', period.id))" />
                     </div>
                 </div>
             </div>
@@ -202,7 +287,7 @@ const getIncidentSeverity = (incidentName) => {
                             </div>
                         </div>
                         <span class="text-sm font-semibold text-gray-600 dark:text-gray-300">{{ employee.branch_name
-                            }}</span>
+                        }}</span>
                     </div>
 
                     <!-- Tabla de días -->
@@ -245,8 +330,14 @@ const getIncidentSeverity = (incidentName) => {
                                             <span v-else>-</span>
                                         </td>
                                         <td class="px-4 py-3">{{ day.exit_time || '-' }}</td>
-                                        <td class="px-4 py-3">{{ day.break_time }} <i
-                                                class="pi pi-info-circle text-gray-400 ml-1"></i></td>
+                                        <td class="px-4 py-3">
+                                            <div class="flex items-center">
+                                                <span>{{ day.break_time }}</span>
+                                                <Button v-if="day.breaks_summary && day.breaks_summary.length"
+                                                    icon="pi pi-book" text rounded size="small" class="ml-2"
+                                                    @click="toggleBreakSummary($event, day.breaks_summary)" />
+                                            </div>
+                                        </td>
                                         <td class="px-4 py-3">{{ day.extra_time }}</td>
                                         <td class="px-4 py-3">{{ day.total_hours }}</td>
                                     </template>
@@ -266,7 +357,8 @@ const getIncidentSeverity = (incidentName) => {
                             <span class="font-semibold">Comentarios</span>
                             <Button icon="pi pi-pencil" text rounded @click="openCommentModal(employee)" />
                         </div>
-                        <p class="text-gray-600 dark:text-gray-400 mt-1">{{ employee.comments || 'Sin comentarios.' }}
+                        <p class="text-gray-600 dark:text-gray-400 mt-1" style="white-space: pre-line">
+                            {{ employee.comments || 'Sin comentarios.' }}
                         </p>
                     </div>
                 </div>
@@ -286,6 +378,56 @@ const getIncidentSeverity = (incidentName) => {
                     <Button type="button" label="Guardar" @click="saveComment"></Button>
                 </div>
             </Dialog>
+
+            <!-- MODAL: Modificar Registro de Asistencia -->
+            <Dialog v-model:visible="attendanceModalVisible" modal header="Modificar registro de asistencia"
+                :style="{ width: '30rem' }">
+                <div v-if="currentDayForEdit">
+                    <p class="mb-4 text-gray-600 dark:text-gray-400">
+                        Editando asistencia para <span class="font-bold">{{ currentEmployeeForEdit.name }}</span> del
+                        día <span class="font-bold">{{ currentDayForEdit.date_formatted }}</span>.
+                    </p>
+                    <div class="flex flex-col gap-4">
+                        <div class="flex flex-col gap-2">
+                            <label for="entry_time">Hora de entrada</label>
+                            <DatePicker v-model="attendanceForm.entry_time" timeOnly hourFormat="12" fluid />
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label for="exit_time">Hora de salida</label>
+                            <DatePicker v-model="attendanceForm.exit_time" timeOnly hourFormat="12" fluid />
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-6">
+                    <Button type="button" label="Cancelar" severity="secondary"
+                        @click="attendanceModalVisible = false"></Button>
+                    <Button type="button" label="Guardar" @click="saveAttendance"
+                        :loading="attendanceForm.processing"></Button>
+                </div>
+            </Dialog>
+
+            <Popover ref="op">
+                <div class="p-2 w-64">
+                    <h3 class="font-semibold mb-2 text-gray-800">Resumen de descansos</h3>
+                    <div v-if="selectedBreaks.length">
+                        <div v-for="(breakItem, index) in selectedBreaks" :key="index"
+                            class="flex justify-between items-center text-sm mb-1 text-gray-600">
+                            <span>Descanso {{ index + 1 }}: {{ breakItem.start }} - {{ breakItem.end }}</span>
+                            <div class="flex items-center">
+                                <i class="pi pi-arrow-right text-xs mx-2"></i>
+                                <span class="font-medium text-gray-800">{{ breakItem.duration }} min</span>
+                            </div>
+                        </div>
+                        <Divider layout="horizontal" />
+                        <div class="flex justify-end font-bold text-gray-800">
+                            <span>Total: {{ totalSelectedBreakTime }} min</span>
+                        </div>
+                    </div>
+                    <div v-else>
+                        <p class="text-sm text-gray-500">No se registraron descansos.</p>
+                    </div>
+                </div>
+            </Popover>
 
             <Menu ref="menu" :model="selectedDayMenu" :popup="true" />
 
