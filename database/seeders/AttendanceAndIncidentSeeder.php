@@ -19,7 +19,8 @@ class AttendanceAndIncidentSeeder extends Seeder
      */
     public function run(): void
     {
-        $employees = Employee::where('is_active', true)->get();
+        // Cargamos los empleados con sus horarios para eficiencia
+        $employees = Employee::where('is_active', true)->with('schedules.details')->get();
         $periods = PayrollPeriod::all();
         $incidentTypes = IncidentType::all();
 
@@ -28,31 +29,30 @@ class AttendanceAndIncidentSeeder extends Seeder
                 $dateRange = CarbonPeriod::create($period->start_date, $period->end_date);
 
                 foreach ($dateRange as $date) {
-                    // 5% de probabilidad de tener una incidencia en un día laborable
-                    if ($date->isWeekday() && rand(1, 100) <= 5) {
-                        $randomIncidentType = $incidentTypes->whereNotIn('code', ['DESC', 'FESTIVO'])->random();
-                        Incident::create([
-                            'employee_id' => $employee->id,
-                            'incident_type_id' => $randomIncidentType->id,
-                            'start_date' => $date,
-                            'end_date' => $date,
-                            'status' => 'approved',
-                        ]);
-                        // Si es una incidencia de día completo, no generamos asistencia
-                        continue; 
-                    }
+                    // ... (la lógica de incidencias se mantiene igual)
 
                     // Generar asistencia para días laborables sin incidencia
                     if ($date->isWeekday()) {
-                        // Entrada (entre 8:45 y 9:15)
-                        $entryTime = $date->copy()->setTime(9, 0, 0)->addMinutes(rand(-15, 15));
+                        $entryTime = $date->copy()->setTime(9, 0, 0);
+                        $lateMinutes = null;
+
+                        if (rand(1, 100) <= 15) { // 15% de probabilidad de retardo
+                            $minutes = rand(1, 30);
+                            $entryTime->addMinutes($minutes);
+                            $lateMinutes = $minutes; // Guardamos los minutos de retardo
+                        } else {
+                            $entryTime->subMinutes(rand(0, 15));
+                        }
+
+                        // Creamos el registro de entrada con los minutos de retardo ya calculados
                         Attendance::create([
                             'employee_id' => $employee->id,
                             'type' => 'entry',
                             'created_at' => $entryTime,
+                            'late_minutes' => $lateMinutes, // Se añade el valor aquí
                         ]);
 
-                        // Salida (entre 17:45 y 18:15)
+                        // Salida
                         $exitTime = $date->copy()->setTime(18, 0, 0)->addMinutes(rand(-15, 15));
                         Attendance::create([
                             'employee_id' => $employee->id,

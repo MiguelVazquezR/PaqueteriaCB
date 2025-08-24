@@ -16,7 +16,6 @@ class IncidentTypeSeeder extends Seeder
         $types = [
             ['name' => 'Falta injustificada', 'code' => 'F_INJUST'],
             ['name' => 'Falta justificada', 'code' => 'F_JUST'],
-            ['name' => 'Retardo', 'code' => 'RETARDO'],
             ['name' => 'Permiso con goce', 'code' => 'P_GOCE'],
             ['name' => 'Permiso sin goce', 'code' => 'P_SIN_GOCE'],
             ['name' => 'Incapacidad general', 'code' => 'INC_GRAL'],

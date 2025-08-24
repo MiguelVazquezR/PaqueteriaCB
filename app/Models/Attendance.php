@@ -9,13 +9,12 @@ class Attendance extends Model
 {
     use HasFactory;
 
-    // Laravel manejará created_at y updated_at automáticamente.
-    // Si solo usas created_at, define: const UPDATED_AT = null;
-    
     protected $fillable = [
         'employee_id',
         'created_by_user_id',
         'type',
+        'late_minutes',
+        'late_ignored',
         'image_path',
     ];
 
