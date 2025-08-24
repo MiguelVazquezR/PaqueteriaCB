@@ -82,7 +82,7 @@ const submit = () => {
         },
         onError: (err) => {
             console.log(err)
-        } 
+        }
     });
 };
 

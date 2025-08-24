@@ -102,7 +102,8 @@ class UserController extends Controller
         });
 
         // --- PAGINACIÓN Y TRANSFORMACIÓN ---
-        $paginator = $finalQuery->paginate(20)->withQueryString();
+        $perPage = $request->input('per_page', 20);
+        $paginator = $finalQuery->paginate($perPage)->withQueryString();
         $paginator->getCollection()->transform(function ($person) {
             return [
                 'id' => ($person->user_id ? 'user_' . $person->user_id : 'emp_' . $person->employee_id),
@@ -244,11 +245,15 @@ class UserController extends Controller
         return redirect()->route('users.index')->with('success', 'Usuario actualizado exitosamente.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
+    public function show(User $user)
     {
-        //
+        // Cargamos todas las relaciones necesarias para la vista de detalle
+        $user->load(['employee.branch']);
+
+        // Aquí podrías cargar más datos en el futuro, como el historial de vacaciones, etc.
+
+        return Inertia::render('User/Show', [
+            'user' => $user,
+        ]);
     }
 }
