@@ -21,6 +21,7 @@ return new class extends Migration
             $table->decimal('net_pay', 10, 2);
             $table->json('calculation_data')->nullable();
             $table->enum('status', ['generated', 'approved', 'paid'])->default('generated');
+            $table->text('comments')->nullable();
             $table->timestamps();
         });
     }

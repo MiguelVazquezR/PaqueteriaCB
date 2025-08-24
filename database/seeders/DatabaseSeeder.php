@@ -16,7 +16,9 @@ class DatabaseSeeder extends Seeder
         $this->call([
             BranchSeeder::class,
             UserEmployeeSeeder::class,
-            // Aquí puedes añadir más seeders en el futuro
+            IncidentTypeSeeder::class,
+            PayrollPeriodSeeder::class,
+            AttendanceAndIncidentSeeder::class,
         ]);
     }
 }

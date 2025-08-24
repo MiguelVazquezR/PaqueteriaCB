@@ -21,8 +21,8 @@ class UserEmployeeSeeder extends Seeder
             'password' => Hash::make('321321321'),
         ]);
 
-        // 2. Crear 50 usuarios con sus perfiles de empleado asociados
+        // 2. Crear 25 usuarios con sus perfiles de empleado asociados
         // La factory se encargará de crear el empleado gracias al método `configure()`
-        User::factory(50)->create();
+        User::factory(25)->create();
     }
 }

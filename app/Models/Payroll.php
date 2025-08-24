@@ -18,6 +18,7 @@ class Payroll extends Model
         'net_pay',
         'calculation_data',
         'status',
+        'comments',
     ];
 
     protected $casts = [
