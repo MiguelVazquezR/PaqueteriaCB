@@ -20,9 +20,10 @@ const items = ref([
 ]);
 
 // --- Methods ---
-const formatDate = (dateString, formatStr = "EEEE dd 'de' MMMM 'de' yyyy") => {
+const formatDate = (dateString, formatStr = "EEEE, dd 'de' MMMM") => {
     if (!dateString) return '';
-    return format(new Date(dateString), formatStr, { locale: es });
+    const date = new Date(dateString).toDateString();
+    return format(date, formatStr, { locale: es });
 };
 
 const printReport = () => {
@@ -44,8 +45,7 @@ const printReport = () => {
                     <div>
                         <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Reporte de incidencias para
                             nómina</h1>
-                        <!-- <p class="text-gray-500">Periodo: {{ formatDate(period.start_date) }} - {{ formatDate(period.end_date) }}</p> -->
-                        <p class="text-gray-500">Periodo: {{ period.start_date }} - {{ period.end_date }}</p>
+                        <p class="text-gray-500">Periodo: {{ formatDate(period.start_date) }} - {{ formatDate(period.end_date) }}</p>
                     </div>
                     <div class="text-right">
                         <p class="font-bold">Paquetería Casa Blanca</p>

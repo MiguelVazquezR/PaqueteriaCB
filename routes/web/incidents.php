@@ -12,6 +12,7 @@ Route::post('/incidents/store-day-incident', [IncidentController::class, 'storeD
 Route::post('/incidents/remove-day-incident', [IncidentController::class, 'removeDayIncident'])->name('incidents.removeDayIncident');
 Route::post('/incidents/update-comment', [IncidentController::class, 'updateComment'])->name('incidents.updateComment');
 Route::get('/incidents/{period}/pre-payroll', [IncidentController::class, 'prePayroll'])->name('incidents.prePayroll');
+Route::get('/incidents/{period}/print-attendances', [IncidentController::class, 'printAttendances'])->name('incidents.printAttendances');
 
 // Rutas de resource
 Route::get('/incidents/{period}', [IncidentController::class, 'show'])->name('incidents.show');

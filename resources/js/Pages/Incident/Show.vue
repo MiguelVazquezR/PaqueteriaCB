@@ -51,7 +51,7 @@ const splitButtonItems = ref([
     {
         label: 'Imprimir incidencias',
         command: () => {
-            window.print();
+            router.get(route('incidents.printAttendances', props.period.id));
         }
     }
 ]);
@@ -258,7 +258,7 @@ const getIncidentSeverity = (incidentName) => {
                     </div>
                     <div class="flex items-center gap-2 w-full md:w-auto">
                         <Select v-model="selectedBranch" :options="branches" optionLabel="name" optionValue="id"
-                            placeholder="Todas las sucursales" class="w-full md:w-56" showClear />
+                            placeholder="Todas las sucursales" class="w-full md:w-56" size="large" showClear />
                         <IconField class="w-full md:w-auto">
                             <InputText v-model="search" placeholder="Buscar empleado" class="w-full" />
                             <InputIcon class="pi pi-search" />
