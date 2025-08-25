@@ -12,12 +12,20 @@ use App\Models\PayrollPeriod;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
+use App\Services\IncidentService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class IncidentController extends Controller
 {
+    protected $incidentService;
+
+    public function __construct(IncidentService $incidentService)
+    {
+        $this->incidentService = $incidentService;
+    }
+
     public function index(Request $request)
     {
         $query = PayrollPeriod::query();
@@ -42,129 +50,25 @@ class IncidentController extends Controller
 
     public function show(PayrollPeriod $period, Request $request)
     {
-        // Esto soluciona el desfase de un día.
         $startDate = Carbon::parse($period->start_date)->startOfDay();
         $endDate = Carbon::parse($period->end_date)->startOfDay();
 
-        // Obtener IDs del período anterior y siguiente para la navegación
         $previousPeriod = PayrollPeriod::where('end_date', '<', $startDate)->orderBy('end_date', 'desc')->first();
         $nextPeriod = PayrollPeriod::where('start_date', '>', $endDate)->orderBy('start_date', 'asc')->first();
 
-        $employeesQuery = Employee::query()
-            ->where(function ($query) use ($startDate, $endDate) {
-                $query->whereHas('attendances', function ($q) use ($startDate, $endDate) {
-                    $q->whereBetween('created_at', [$startDate, $endDate->copy()->endOfDay()]);
-                })
-                    ->orWhereHas('incidents', function ($q) use ($startDate, $endDate) {
-                        $q->whereDate('start_date', '<=', $endDate)
-                            ->whereDate('end_date', '>=', $startDate);
-                    });
+        // Usamos el nuevo scope y cargamos todas las relaciones necesarias
+        $employees = Employee::activeInPeriod($startDate, $endDate)
+            ->with(['branch', 'user', 'schedules.details', 'incidents.incidentType', 'attendances', 'payrolls' => fn($q) => $q->where('start_date', $startDate)])
+            ->when($request->input('branch_id'), fn($q, $id) => $q->where('branch_id', $id))
+            ->when($request->input('search'), function ($q, $search) {
+                $q->where(fn($subQ) => $subQ->where('first_name', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%")->orWhere('employee_number', 'like', "%{$search}%"));
             })
-            ->with(['branch', 'user']);
+            ->get();
 
-        // Aplicar filtros de la UI (ahora funcionarán correctamente)
-        $employeesQuery->when($request->input('branch_id'), function ($q, $branchId) {
-            $q->where('branch_id', $branchId);
-        });
-        $employeesQuery->when($request->input('search'), function ($q, $search) {
-            $q->where(function ($subQ) use ($search) {
-                $subQ->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%")
-                    ->orWhere('employee_number', 'like', "%{$search}%");
-            });
-        });
-
-        $employees = $employeesQuery->get();
-
-        // Usamos endOfDay() aquí para asegurar que el último día del rango sea incluido completamente.
         $dateRange = CarbonPeriod::create($startDate, $endDate->copy()->endOfDay());
 
-        // Transformar los datos para cada empleado
-        $employeesData = $employees->map(function ($employee) use ($dateRange, $period) {
-            $employee->load([
-                'attendances' => fn($q) => $q->whereBetween('created_at', [$dateRange->getStartDate(), $dateRange->getEndDate()->endOfDay()])->orderBy('created_at'),
-                'incidents' => fn($q) => $q->whereDate('start_date', '<=', $dateRange->getEndDate())->whereDate('end_date', '>=', $dateRange->getStartDate()),
-                'schedules.details'
-            ]);
-
-            $dailyData = [];
-            foreach ($dateRange as $date) {
-                $dayKey = $date->format('Y-m-d');
-                $attendancesToday = $employee->attendances->filter(fn($att) => Carbon::parse($att->created_at)->isSameDay($date));
-                $incidentToday = $employee->incidents->first(fn($inc) => $date->between($inc->start_date, $inc->end_date));
-
-                $entry = $attendancesToday->where('type', 'entry')->first();
-                $exit = $attendancesToday->where('type', 'exit')->last();
-
-                // --- LÓGICA DE CÁLCULO DE TIEMPOS ---
-                $totalWorkMinutes = 0;
-                $totalBreakMinutes = 0;
-                $extraMinutes = 0;
-                $breaksSummary = [];
-
-                if ($entry && $exit) {
-                    $breakStarts = $attendancesToday->where('type', 'break_start')->values();
-                    $breakEnds = $attendancesToday->where('type', 'break_end')->values();
-
-                    // 1. Calcular tiempo total de descanso y preparar resumen
-                    for ($i = 0; $i < $breakStarts->count(); $i++) {
-                        if (isset($breakEnds[$i])) {
-                            $start = Carbon::parse($breakStarts[$i]->created_at);
-                            $end = Carbon::parse($breakEnds[$i]->created_at);
-                            // Usamos abs() para asegurar que la duración siempre sea positiva.
-                            $duration = abs($end->diffInMinutes($start));
-                            $totalBreakMinutes += $duration;
-                            $breaksSummary[] = [
-                                'start' => $start->format('h:i a'),
-                                'end' => $end->format('h:i a'),
-                                'duration' => $duration,
-                            ];
-                        }
-                    }
-
-                    // 2. Calcular horas trabajadas netas
-                    $grossWorkMinutes = abs(Carbon::parse($exit->created_at)->diffInMinutes(Carbon::parse($entry->created_at)));
-                    $totalWorkMinutes = $grossWorkMinutes - $totalBreakMinutes;
-
-                    // 3. Calcular horas extra comparando con el horario
-                    $dayOfWeek = $date->dayOfWeekIso;
-                    $scheduleDetail = $employee->schedules->flatMap->details->firstWhere('day_of_week', $dayOfWeek);
-                    if ($scheduleDetail) {
-                        $scheduledStart = Carbon::parse($scheduleDetail->start_time);
-                        $scheduledEnd = Carbon::parse($scheduleDetail->end_time);
-                        $scheduledWorkMinutes = abs($scheduledEnd->diffInMinutes($scheduledStart)) - ($scheduleDetail->meal_minutes ?? 0);
-
-                        $difference = $totalWorkMinutes - $scheduledWorkMinutes;
-                        $extraMinutes = max(0, $difference); // El tiempo extra no puede ser negativo
-                    }
-                }
-
-                // Función para formatear minutos a "X h Y min"
-                $formatMinutes = fn($mins) => floor($mins / 60) . ' h ' . ($mins % 60) . ' min';
-
-                $dailyData[] = [
-                    'date_formatted' => $date->isoFormat("dddd, DD [de] MMMM"),
-                    'date' => $dayKey,
-                    'entry_time' => $entry ? Carbon::parse($entry->created_at)->format('h:i a') : null,
-                    'exit_time' => $exit ? Carbon::parse($exit->created_at)->format('h:i a') : null,
-                    'entry_time_raw' => $entry ? Carbon::parse($entry->created_at)->format('H:i') : null,
-                    'exit_time_raw' => $exit ? Carbon::parse($exit->created_at)->format('H:i') : null,
-                    'break_time' => $formatMinutes($totalBreakMinutes),
-                    'extra_time' => $formatMinutes($extraMinutes),
-                    'total_hours' => $formatMinutes($totalWorkMinutes),
-                    'incident' => $incidentToday?->incidentType->name,
-                    'late_minutes' => $entry?->late_minutes,
-                    'late_ignored' => $entry?->late_ignored,
-                    'entry_id' => $entry?->id,
-                    'breaks_summary' => $breaksSummary,
-                ];
-            }
-
-            $payrollRecord = Payroll::where('employee_id', $employee->id)
-                // Asumiendo que se puede vincular por fechas si no hay ID de periodo
-                ->where('start_date', $period->start_date)
-                ->first();
-
+        // La transformación
+        $employeesData = $employees->map(function ($employee) use ($dateRange) {
             return [
                 'id' => $employee->id,
                 'name' => $employee->first_name . ' ' . $employee->last_name,
@@ -172,8 +76,9 @@ class IncidentController extends Controller
                 'position' => $employee->position,
                 'avatar_url' => $employee->user->profile_photo_url ?? null,
                 'branch_name' => $employee->branch->name,
-                'daily_data' => $dailyData,
-                'comments' => $payrollRecord?->comments,
+                'comments' => $employee->payrolls->first()?->comments,
+                // Delegamos toda la lógica compleja al Service
+                'daily_data' => $this->incidentService->getDailyDataForEmployee($employee, $dateRange),
             ];
         });
 
@@ -186,10 +91,7 @@ class IncidentController extends Controller
             'employeesData' => $employeesData,
             'branches' => Branch::all(['id', 'name']),
             'filters' => $request->only(['branch_id', 'search']),
-            'navigation' => [
-                'previous_period_id' => $previousPeriod?->id,
-                'next_period_id' => $nextPeriod?->id,
-            ],
+            'navigation' => ['previous_period_id' => $previousPeriod?->id, 'next_period_id' => $nextPeriod?->id],
             'incidentTypes' => IncidentType::all(['id', 'name']),
         ]);
     }
@@ -449,91 +351,7 @@ class IncidentController extends Controller
 
         $dateRange = CarbonPeriod::create($startDate, $endDate->copy()->endOfDay());
 
-        $employeesData = $employees->map(function ($employee) use ($dateRange, $period) {
-            $employee->load([
-                'attendances' => fn($q) => $q->whereBetween('created_at', [$dateRange->getStartDate(), $dateRange->getEndDate()->endOfDay()])->orderBy('created_at'),
-                'incidents' => fn($q) => $q->whereDate('start_date', '<=', $dateRange->getEndDate())->whereDate('end_date', '>=', $dateRange->getStartDate()),
-                'schedules.details'
-            ]);
-
-            $dailyData = [];
-            foreach ($dateRange as $date) {
-                $dayKey = $date->format('Y-m-d');
-                $attendancesToday = $employee->attendances->filter(fn($att) => Carbon::parse($att->created_at)->isSameDay($date));
-                $incidentToday = $employee->incidents->first(fn($inc) => $date->between($inc->start_date, $inc->end_date));
-
-                $entry = $attendancesToday->where('type', 'entry')->first();
-                $exit = $attendancesToday->where('type', 'exit')->last();
-
-                // --- LÓGICA DE CÁLCULO DE TIEMPOS ---
-                $totalWorkMinutes = 0;
-                $totalBreakMinutes = 0;
-                $extraMinutes = 0;
-                $breaksSummary = [];
-
-                if ($entry && $exit) {
-                    $breakStarts = $attendancesToday->where('type', 'break_start')->values();
-                    $breakEnds = $attendancesToday->where('type', 'break_end')->values();
-
-                    // 1. Calcular tiempo total de descanso y preparar resumen
-                    for ($i = 0; $i < $breakStarts->count(); $i++) {
-                        if (isset($breakEnds[$i])) {
-                            $start = Carbon::parse($breakStarts[$i]->created_at);
-                            $end = Carbon::parse($breakEnds[$i]->created_at);
-                            // Usamos abs() para asegurar que la duración siempre sea positiva.
-                            $duration = abs($end->diffInMinutes($start));
-                            $totalBreakMinutes += $duration;
-                            $breaksSummary[] = [
-                                'start' => $start->format('h:i a'),
-                                'end' => $end->format('h:i a'),
-                                'duration' => $duration,
-                            ];
-                        }
-                    }
-
-                    // 2. Calcular horas trabajadas netas
-                    $grossWorkMinutes = abs(Carbon::parse($exit->created_at)->diffInMinutes(Carbon::parse($entry->created_at)));
-                    $totalWorkMinutes = $grossWorkMinutes - $totalBreakMinutes;
-
-                    // 3. Calcular horas extra comparando con el horario
-                    $dayOfWeek = $date->dayOfWeekIso;
-                    $scheduleDetail = $employee->schedules->flatMap->details->firstWhere('day_of_week', $dayOfWeek);
-                    if ($scheduleDetail) {
-                        $scheduledStart = Carbon::parse($scheduleDetail->start_time);
-                        $scheduledEnd = Carbon::parse($scheduleDetail->end_time);
-                        $scheduledWorkMinutes = abs($scheduledEnd->diffInMinutes($scheduledStart)) - ($scheduleDetail->meal_minutes ?? 0);
-
-                        $difference = $totalWorkMinutes - $scheduledWorkMinutes;
-                        $extraMinutes = max(0, $difference); // El tiempo extra no puede ser negativo
-                    }
-                }
-
-                // Función para formatear minutos a "X h Y min"
-                $formatMinutes = fn($mins) => floor($mins / 60) . ' h ' . ($mins % 60) . ' min';
-
-                $dailyData[] = [
-                    'date_formatted' => $date->isoFormat("dddd, DD [de] MMMM"),
-                    'date' => $dayKey,
-                    'entry_time' => $entry ? Carbon::parse($entry->created_at)->format('h:i a') : null,
-                    'exit_time' => $exit ? Carbon::parse($exit->created_at)->format('h:i a') : null,
-                    'entry_time_raw' => $entry ? Carbon::parse($entry->created_at)->format('H:i') : null,
-                    'exit_time_raw' => $exit ? Carbon::parse($exit->created_at)->format('H:i') : null,
-                    'break_time' => $formatMinutes($totalBreakMinutes),
-                    'extra_time' => $formatMinutes($extraMinutes),
-                    'total_hours' => $formatMinutes($totalWorkMinutes),
-                    'incident' => $incidentToday?->incidentType->name,
-                    'late_minutes' => $entry?->late_minutes,
-                    'late_ignored' => $entry?->late_ignored,
-                    'entry_id' => $entry?->id,
-                    'breaks_summary' => $breaksSummary,
-                ];
-            }
-
-            $payrollRecord = Payroll::where('employee_id', $employee->id)
-                // Asumiendo que se puede vincular por fechas si no hay ID de periodo
-                ->where('start_date', $period->start_date)
-                ->first();
-
+        $employeesData = $employees->map(function ($employee) use ($dateRange) {
             return [
                 'id' => $employee->id,
                 'name' => $employee->first_name . ' ' . $employee->last_name,
@@ -541,8 +359,9 @@ class IncidentController extends Controller
                 'position' => $employee->position,
                 'avatar_url' => $employee->user->profile_photo_url ?? null,
                 'branch_name' => $employee->branch->name,
-                'daily_data' => $dailyData,
-                'comments' => $payrollRecord?->comments,
+                'comments' => $employee->payrolls->first()?->comments,
+                // Delegamos toda la lógica compleja al Service
+                'daily_data' => $this->incidentService->getDailyDataForEmployee($employee, $dateRange),
             ];
         });
 

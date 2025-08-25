@@ -38,6 +38,22 @@ class Employee extends Model
         'base_salary' => 'decimal:2',
     ];
 
+    /**
+     * Scope a query to only include employees active within a given period.
+     */
+    public function scopeActiveInPeriod($query, $startDate, $endDate)
+    {
+        return $query->where(function ($q) use ($startDate, $endDate) {
+            $q->whereHas('attendances', function ($subQ) use ($startDate, $endDate) {
+                $subQ->whereBetween('created_at', [$startDate, $endDate->copy()->endOfDay()]);
+            })
+                ->orWhereHas('incidents', function ($subQ) use ($startDate, $endDate) {
+                    $subQ->whereDate('start_date', '<=', $endDate)
+                        ->whereDate('end_date', '>=', $startDate);
+                });
+        });
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
