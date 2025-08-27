@@ -11,8 +11,26 @@ const model = ref([
             { label: 'Usuarios', icon: 'pi pi-fw pi-user', to: route('users.index') },
             { label: 'Sucursales', icon: 'pi pi-fw pi-building', to: route('branches.index') },
             { label: 'Incidencias', icon: 'pi pi-fw pi-calendar-times', to: route('incidents.index') },
-            { label: 'Configuraciones', icon: 'pi pi-fw pi-cog', to: route('settings.index') },
-            // { label: 'Incidencias', icon: 'pi pi-fw pi-mobile', to: '/uikit/button', class: 'rotated-icon' },
+            {
+                label: 'Configuraciones', icon: 'pi pi-fw pi-cog',
+                items: [
+                    {
+                        label: 'Roles y permisos',
+                        icon: 'pi pi-key',
+                        to: route('settings.roles-permissions.index')
+                    },
+                    {
+                        label: 'Días festivos',
+                        icon: 'pi pi-calendar-times',
+                        to: route('dashboard')
+                    },
+                    {
+                        label: 'Horarios del personal',
+                        icon: 'pi pi-clock',
+                        to: route('dashboard')
+                    },
+                ]
+            },
         ]
     },
     // {

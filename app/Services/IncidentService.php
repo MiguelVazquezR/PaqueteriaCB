@@ -13,11 +13,7 @@ class IncidentService
      */
     public function getDailyDataForEmployee(Employee $employee, CarbonPeriod $dateRange): array
     {
-        $employee->load([
-            'attendances' => fn($q) => $q->whereBetween('created_at', [$dateRange->getStartDate(), $dateRange->getEndDate()->endOfDay()])->orderBy('created_at'),
-            'incidents' => fn($q) => $q->whereDate('start_date', '<=', $dateRange->getEndDate())->whereDate('end_date', '>=', $dateRange->getStartDate()),
-            'schedules.details'
-        ]);
+        $employee->load(['schedules.details']);
 
         $dailyData = [];
         foreach ($dateRange as $date) {

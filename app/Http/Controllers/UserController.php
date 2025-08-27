@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
+use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
@@ -130,7 +131,8 @@ class UserController extends Controller
     {
         return Inertia::render('User/Create', [
             'branches' => Branch::where('is_active', true)->get(['id', 'name']),
-            // Aquí puedes pasar más datos si los necesitas, como horarios, puestos, etc.
+            // ✨ Pasar los roles con sus permisos a la vista
+            'roles' => Role::with('permissions:name')->get(['id', 'name']),
         ]);
     }
 
@@ -162,6 +164,7 @@ class UserController extends Controller
             'create_user_account' => 'required|boolean',
             'email' => ['required_if:create_user_account,true', 'nullable', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required_if:create_user_account,true', 'nullable', 'string', 'min:8'],
+            'role_id' => ['required_if:create_user_account,true', 'nullable', 'exists:roles,id'],
         ]);
 
         // Crear el empleado primero
@@ -175,6 +178,10 @@ class UserController extends Controller
                 'password' => Hash::make($request->input('password')),
             ]);
 
+            // ✨ Asignar el rol al nuevo usuario
+            $role = Role::findById($request->input('role_id'));
+            $user->assignRole($role);
+
             // Ligamos el usuario al empleado
             $employee->user_id = $user->id;
             $employee->save();
@@ -185,12 +192,13 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
-        // Cargamos el usuario con su relación de empleado
-        $user->load('employee');
+        // Cargamos ambas relaciones: el empleado y los roles asignados al usuario.
+        $user->load(['employee', 'roles:id']);
 
         return Inertia::render('User/Edit', [
             'user' => $user,
             'branches' => Branch::where('is_active', true)->get(['id', 'name']),
+            'roles' => Role::with('permissions:name')->get(['id', 'name']),
         ]);
     }
 
@@ -223,6 +231,7 @@ class UserController extends Controller
             // Acceso al sistema
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'password' => ['nullable', 'string', 'min:8'], // La contraseña es opcional al editar
+            'role_id' => ['required', 'exists:roles,id'],
         ]);
 
         // Actualizar el registro del usuario
@@ -230,6 +239,10 @@ class UserController extends Controller
             'name' => $request->input('first_name') . ' ' . $request->input('last_name'),
             'email' => $request->input('email'),
         ]);
+
+        // ✨ Sincronizar el rol (quita los anteriores y asigna el nuevo)
+        $role = Role::findById($request->input('role_id'));
+        $user->syncRoles($role);
 
         // Si se proporcionó una nueva contraseña, la actualizamos
         if ($request->filled('password')) {

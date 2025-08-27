@@ -1,10 +1,15 @@
 <?php
 
+use App\Http\Controllers\Setting\PermissionController;
+use App\Http\Controllers\Setting\RolePermissionController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\SettingController;
 
-// Ruta para mostrar la página de configuración
-Route::get('settings', [SettingController::class, 'index'])->name('settings.index');
-
-// Ruta para guardar los cambios en la configuración
-Route::patch('settings', [SettingController::class, 'update'])->name('settings.update');
+Route::prefix('settings')->name('settings.')->group(function () {
+    Route::resource('roles-permissions', RolePermissionController::class)
+        ->except(['show', 'edit', 'update', 'destroy']);
+    Route::put('roles-permissions/{role}/permissions', [RolePermissionController::class, 'updatePermissions'])->name('roles-permissions.updatePermissions');
+    // ->middleware('can:gestionar_roles_permisos'); // El permiso se aplica a todas las rutas de este resource.;
+    Route::resource('permissions', PermissionController::class)
+        ->only(['store', 'update', 'destroy']);
+    // ->middleware('can:gestionar_roles_permisos');
+});

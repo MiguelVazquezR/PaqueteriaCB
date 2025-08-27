@@ -5,11 +5,6 @@ import { computed, ref, watch } from 'vue';
 import AppFooter from './AppFooter.vue';
 import AppSidebar from './AppSidebar.vue';
 import AppTopbar from './AppTopbar.vue';
-import ApplicationMark from '@/Components/ApplicationMark.vue';
-import Dropdown from '@/Components/Dropdown.vue';
-import DropdownLink from '@/Components/DropdownLink.vue';
-import NavLink from '@/Components/NavLink.vue';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
 
 defineProps({
     title: String,
@@ -86,4 +81,5 @@ const logout = () => {
         <div class="layout-mask animate-fadein"></div>
     </div>
     <Toast />
+    <ConfirmDialog />
 </template>

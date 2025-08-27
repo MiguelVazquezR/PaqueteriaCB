@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -13,6 +13,7 @@ import { useToast } from 'primevue';
 const props = defineProps({
     user: Object,
     branches: Array,
+    roles: Array,
     errors: Object,
 });
 
@@ -23,6 +24,7 @@ const items = ref([
     { label: 'Usuarios', url: route('users.index'), icon: PrimeIcons.USER },
     { label: 'Editar usuario' }
 ]);
+const op = ref(); // Referencia para el Popover
 
 const relationships = [
     'Madre/Padre', 'Hermano/Hermana', 'Esposo/Esposa', 'Tío/Tía', 'Abuelo/Abuela', 'Otro',
@@ -56,9 +58,17 @@ const form = useForm({
     // Acceso al sistema
     email: props.user.email,
     password: '', // La contraseña se deja en blanco por seguridad
+    role_id: props.user.roles[0]?.id || null,
 
     // Imagen
     facial_image: null,
+});
+
+// --- Computed Properties ---
+const selectedRolePermissions = computed(() => {
+    if (!form.role_id) return [];
+    const selected = props.roles.find(r => r.id === form.role_id);
+    return selected ? selected.permissions : [];
 });
 
 // --- Methods ---
@@ -80,6 +90,12 @@ const submit = () => {
             console.log(err)
         }
     });
+};
+
+const togglePermissionsPopover = (event) => {
+    if (form.role_id) {
+        op.value.toggle(event);
+    }
 };
 
 </script>
@@ -263,6 +279,18 @@ const submit = () => {
                             <small v-if="form.errors.password" class="text-red-500 mt-1">{{ form.errors.password
                             }}</small>
                         </div>
+                        <div class="md:col-span-2">
+                            <div class="flex items-center gap-2">
+                                <InputLabel for="role_id" value="Rol en el sistema*" />
+                                <i class="pi pi-book cursor-pointer text-gray-400"
+                                    @click="togglePermissionsPopover"></i>
+                            </div>
+                            <Select id="role_id" v-model="form.role_id" :options="roles" optionLabel="name"
+                                optionValue="id" placeholder="Selecciona un rol" class="w-full"
+                                :invalid="!!form.errors.role_id" />
+                            <small v-if="form.errors.role_id" class="text-red-500 mt-1">{{ form.errors.role_id
+                            }}</small>
+                        </div>
                     </div>
 
                     <!-- === ACCIONES === -->
@@ -276,4 +304,23 @@ const submit = () => {
             </form>
         </div>
     </AppLayout>
+
+    <!-- ✨ Popover para Permisos ✨ -->
+    <Popover ref="op">
+        <div class="p-2 w-72">
+            <h3 class="font-bold mb-2">Detalles del rol</h3>
+            <p class="font-semibold text-primary-600 mb-2">{{roles.find(r => r.id === form.role_id)?.name}}</p>
+            <div class="border rounded-md p-2 max-h-48 overflow-y-auto">
+                <p v-if="!selectedRolePermissions.length" class="text-sm text-gray-500">Este rol no tiene permisos
+                    asignados.</p>
+                <ul v-else class="space-y-1">
+                    <li v-for="permission in selectedRolePermissions" :key="permission.name"
+                        class="flex items-center gap-2 text-sm">
+                        <i class="pi pi-check text-green-500"></i>
+                        <span class="capitalize">{{ permission.name.replace(/_/g, ' ') }}</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </Popover>
 </template>
