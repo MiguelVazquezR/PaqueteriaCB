@@ -22,12 +22,12 @@ const model = ref([
                     {
                         label: 'Días festivos',
                         icon: 'pi pi-calendar-times',
-                        to: route('dashboard')
+                        to: route('settings.holidays.index')
                     },
                     {
                         label: 'Horarios del personal',
                         icon: 'pi pi-clock',
-                        to: route('dashboard')
+                        to: route('settings.schedules.index')
                     },
                 ]
             },

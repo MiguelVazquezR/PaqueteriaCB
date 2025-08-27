@@ -22,8 +22,18 @@ class Branch extends Model
         'is_active' => 'boolean',
     ];
 
+    public function holidayRules()
+    {
+        return $this->belongsToMany(HolidayRule::class, 'branch_holiday_rule');
+    }
+
     public function employees()
     {
         return $this->hasMany(Employee::class);
+    }
+
+    public function schedules()
+    {
+        return $this->belongsToMany(Schedule::class, 'branch_schedule');
     }
 }

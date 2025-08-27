@@ -115,9 +115,9 @@ const confirmDeletePermission = (permission) => {
                 }
             });
         },
-        reject: () => {
-            toast.add({ severity: 'error', summary: 'Rechazado', detail: 'No se eliminó el permiso', life: 3000 });
-        }
+        // reject: () => {
+        //     toast.add({ severity: 'error', summary: 'Rechazado', detail: 'No se eliminó el permiso', life: 3000 });
+        // }
     });
 };
 

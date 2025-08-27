@@ -22,4 +22,11 @@ class Schedule extends Model
             ->withPivot('start_date', 'end_date')
             ->withTimestamps();
     }
+
+
+    //Un horario puede estar vinculado a muchas sucursales.
+    public function branches()
+    {
+        return $this->belongsToMany(Branch::class, 'branch_schedule');
+    }
 }
