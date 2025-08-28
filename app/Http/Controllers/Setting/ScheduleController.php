@@ -39,15 +39,21 @@ class ScheduleController extends Controller
     {
         $validated = $this->validateSchedule($request);
 
-        DB::transaction(function () use ($validated) {
+        // Filtramos el array para quedarnos solo con los días activos.
+        $activeDetails = array_filter($validated['details'], fn($detail) => $detail['is_active']);
+
+        DB::transaction(function () use ($validated, $activeDetails) {
             $schedule = Schedule::create(['name' => $validated['name']]);
-            $schedule->details()->createMany($validated['details']);
+            // Usamos el array filtrado para crear los registros.
+            if (!empty($activeDetails)) {
+                $schedule->details()->createMany($activeDetails);
+            }
             if (!empty($validated['branch_ids'])) {
                 $schedule->branches()->sync($validated['branch_ids']);
             }
         });
 
-        return redirect()->route('settings.schedules.index')->with('success', 'Horario creado.');
+        return redirect()->route('settings.schedules.index');
     }
 
     public function edit(Schedule $schedule)
@@ -65,14 +71,19 @@ class ScheduleController extends Controller
     {
         $validated = $this->validateSchedule($request, $schedule->id);
 
-        DB::transaction(function () use ($validated, $schedule) {
+        $activeDetails = array_filter($validated['details'], fn($detail) => $detail['is_active']);
+
+        DB::transaction(function () use ($validated, $activeDetails, $schedule) {
             $schedule->update(['name' => $validated['name']]);
-            $schedule->details()->delete();
-            $schedule->details()->createMany($validated['details']);
+            $schedule->details()->delete(); // Borramos los detalles viejos
+            // Creamos solo los nuevos detalles activos
+            if (!empty($activeDetails)) {
+                $schedule->details()->createMany($activeDetails);
+            }
             $schedule->branches()->sync($validated['branch_ids'] ?? []);
         });
 
-        return redirect()->route('settings.schedules.index')->with('success', 'Horario actualizado.');
+        return redirect()->route('settings.schedules.index');
     }
 
     public function destroy(Schedule $schedule)
@@ -93,6 +104,10 @@ class ScheduleController extends Controller
             'details.*.start_time' => 'nullable|required_if:details.*.is_active,true|date_format:H:i',
             'details.*.end_time' => 'nullable|required_if:details.*.is_active,true|date_format:H:i|after:details.*.start_time',
             'details.*.meal_minutes' => 'nullable|required_if:details.*.is_active,true|integer|min:0',
+        ], [
+            'details.*.start_time.required_if' => 'Llenar campo',
+            'details.*.end_time.required_if' => 'Llenar campo',
+            'details.*.end_time.after' => 'La hora de finalización debe ser posterior a la hora de inicio.',
         ]);
     }
 }

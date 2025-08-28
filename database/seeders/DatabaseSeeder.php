@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             PayrollPeriodSeeder::class,
             ScheduleSeeder::class,
             AttendanceAndIncidentSeeder::class,
+            BonusReportSeeder::class,
         ]);
     }
 }

@@ -1,6 +1,6 @@
 <?php
-
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\BonusController;
+use Illuminate\Support\Facades\Route;
 
-Route::resource('bonuses', BonusController::class);
+Route::get('bonuses', [BonusController::class, 'index'])->name('bonuses.index');
+Route::get('bonuses/{period}', [BonusController::class, 'show'])->name('bonuses.show');

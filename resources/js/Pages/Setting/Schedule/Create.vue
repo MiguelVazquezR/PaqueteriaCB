@@ -3,10 +3,12 @@ import { ref, computed } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
+import { useToast } from 'primevue/usetoast';
 
 const props = defineProps({ branches: Array, errors: Object });
 const home = ref({ icon: 'pi pi-home', url: route('dashboard') });
 const items = ref([{ label: 'Configuraciones' }, { label: 'Horarios', url: route('settings.schedules.index') }, { label: 'Crear horario' }]);
+const Toast = useToast();
 
 // Función para convertir 'HH:mm' a un objeto Date que DatePicker entiende
 const timeStringToDate = (timeString) => {
@@ -60,7 +62,14 @@ const submit = () => {
             start_time: day.start_time ? new Date(day.start_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : null,
             end_time: day.end_time ? new Date(day.end_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : null,
         }))
-    })).post(route('settings.schedules.store'));
+    })).post(route('settings.schedules.store'), {
+        onSuccess: () => {
+            Toast.add({ severity: 'success', summary: 'Éxito', detail: 'Horario actualizado.', life: 3000 });
+        },
+        onError: (err) => {
+            console.log(err)
+        }
+    });
 };
 </script>
 
@@ -113,13 +122,21 @@ const submit = () => {
                                 <span>Total Hrs</span>
                                 <span class="text-center">Descanso</span>
                             </div>
-                            <div v-for="day in form.details" :key="day.day_of_week"
+                            <div v-for="(day, index) in form.details" :key="day.day_of_week"
                                 class="grid grid-cols-6 gap-3 items-center">
                                 <span>{{ day.day_name }}</span>
-                                <DatePicker v-model="day.start_time" timeOnly hourFormat="12"
-                                    :disabled="!day.is_active" />
-                                <DatePicker v-model="day.end_time" timeOnly hourFormat="12"
-                                    :disabled="!day.is_active" />
+                                <div>
+                                    <DatePicker v-model="day.start_time" timeOnly hourFormat="12"
+                                        :disabled="!day.is_active" />
+                                    <small v-if="form.errors[`details.${index}.start_time`]" class="text-red-500">{{
+                                        form.errors[`details.${index}.start_time`] }}</small>
+                                </div>
+                                <div>
+                                    <DatePicker v-model="day.end_time" timeOnly hourFormat="12"
+                                        :disabled="!day.is_active" />
+                                    <small v-if="form.errors[`details.${index}.end_time`]" class="text-red-500">{{
+                                        form.errors[`details.${index}.end_time`] }}</small>
+                                </div>
                                 <InputNumber v-model="day.meal_minutes" :disabled="!day.is_active" fluid />
                                 <span class="font-medium text-center">
                                     {{ day.is_active && day.start_time && day.end_time

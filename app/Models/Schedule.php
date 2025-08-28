@@ -23,7 +23,6 @@ class Schedule extends Model
             ->withTimestamps();
     }
 
-
     //Un horario puede estar vinculado a muchas sucursales.
     public function branches()
     {

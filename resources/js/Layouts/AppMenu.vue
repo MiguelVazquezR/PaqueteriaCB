@@ -11,6 +11,7 @@ const model = ref([
             { label: 'Usuarios', icon: 'pi pi-fw pi-user', to: route('users.index') },
             { label: 'Sucursales', icon: 'pi pi-fw pi-building', to: route('branches.index') },
             { label: 'Incidencias', icon: 'pi pi-fw pi-calendar-times', to: route('incidents.index') },
+            { label: 'Bonos', icon: 'pi pi-fw pi-wallet', to: route('bonuses.index') },
             {
                 label: 'Configuraciones', icon: 'pi pi-fw pi-cog',
                 items: [
