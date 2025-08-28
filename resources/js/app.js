@@ -11,7 +11,7 @@ import ConfirmationService from 'primevue/confirmationservice';
 import ToastService from 'primevue/toastservice';
 import Aura from '@primeuix/themes/aura';
 import "primeicons/primeicons.css";
-
+import { theme } from './presets/theme'; // ✨ 1. Importar tema personalizado
 import '@/assets/styles.scss';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
@@ -24,12 +24,13 @@ createInertiaApp({
             .use(plugin)
             .use(ZiggyVue)
             .use(PrimeVue, {
-                theme: {
-                    preset: Aura,
-                    options: {
-                        darkModeSelector: '.app-dark'
-                    }
-                }
+                theme: theme
+                // theme: {
+                //     preset: Aura,
+                //     options: {
+                //         darkModeSelector: '.app-dark'
+                //     }
+                // }
             })
             .use(ToastService)
             .use(ConfirmationService)
