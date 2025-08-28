@@ -60,7 +60,7 @@ const submit = () => {
                         <label for="password1"
                             class="block text-surface-900 dark:text-surface-0 font-medium text-xl mb-2 mt-4">Contraseña</label>
                         <Password id="password1" v-model="form.password" placeholder="Contraseña" :toggleMask="true"
-                            fluid :feedback="false" :invalid="form.errors.password"></Password>
+                            fluid :feedback="false" :invalid="form.errors.password" @keypress.enter="submit"></Password>
                         <Message v-if="form.errors.password" severity="error" variant="simple" size="small">
                             {{ form.errors.password }}
                         </Message>

@@ -25,21 +25,20 @@ const items = ref([
     { label: 'Editar usuario' }
 ]);
 const op = ref(); // Referencia para el Popover
-
+const imagePreview = ref(props.user.profile_photo_path ? props.user.profile_photo_url : null);
+const fileUploadRef = ref(null);
 const relationships = [
     'Madre/Padre', 'Hermano/Hermana', 'Esposo/Esposa', 'Tío/Tía', 'Abuelo/Abuela', 'Otro',
 ];
 
 // Inicializamos el formulario con los datos del usuario y su empleado
 const form = useForm({
-    // Info Personal
+    _method: 'PUT', // Importante para que Inertia maneje la subida de archivos en una petición PUT
     first_name: props.user.employee?.first_name || '',
     last_name: props.user.employee?.last_name || '',
     phone: props.user.employee?.phone || '',
     birth_date: props.user.employee?.birth_date || null,
     address: props.user.employee?.address || '',
-
-    // Info Laboral
     employee_number: props.user.employee?.employee_number || '',
     hire_date: props.user.employee?.hire_date || null,
     branch_id: props.user.employee?.branch_id || null,
@@ -49,19 +48,14 @@ const form = useForm({
     nss: props.user.employee?.nss || '',
     base_salary: props.user.employee?.base_salary || null,
     is_active: props.user.employee?.is_active ?? true,
-
-    // Contacto Emergencia
     emergency_contact_name: props.user.employee?.emergency_contact_name || '',
     emergency_contact_phone: props.user.employee?.emergency_contact_phone || '',
     emergency_contact_relationship: props.user.employee?.emergency_contact_relationship || '',
-
-    // Acceso al sistema
     email: props.user.email,
-    password: '', // La contraseña se deja en blanco por seguridad
+    password: '',
     role_id: props.user.roles[0]?.id || null,
-
-    // Imagen
     facial_image: null,
+    delete_photo: false,
 });
 
 // --- Computed Properties ---
@@ -72,23 +66,30 @@ const selectedRolePermissions = computed(() => {
 });
 
 // --- Methods ---
-function showSuccess() {
-    toast.add({ severity: 'success', summary: 'Éxito', detail: 'Usuario actualizado correctamente', life: 3000 });
-}
-
 const onFileSelect = (event) => {
-    form.facial_image = event.files[0];
+    const file = event.files[0];
+    if (file) {
+        form.facial_image = file;
+        imagePreview.value = URL.createObjectURL(file);
+        form.delete_photo = false; // Si se sube una nueva, no se borra
+    }
+};
+
+const clearImage = () => {
+    form.facial_image = null;
+    imagePreview.value = null;
+    form.delete_photo = true; // Indicar que se debe borrar la foto al guardar
+    // ✨ Usamos la referencia para limpiar el estado interno del componente
+    if (fileUploadRef.value) {
+        fileUploadRef.value.clear();
+    }
 };
 
 const submit = () => {
-    // Usamos PUT para la actualización
-    form.put(route('users.update', props.user.id), {
-        onSuccess: () => {
-            showSuccess();
-        },
-        onError: (err) => {
-            console.log(err)
-        }
+    // Usamos POST porque los navegadores no soportan subida de archivos con PUT nativamente.
+    // Inertia maneja esto automáticamente si añadimos _method: 'PUT' al formulario.
+    form.post(route('users.update', props.user.id), {
+        forceFormData: true, // Asegura que se envíe como multipart/form-data
     });
 };
 
@@ -242,21 +243,30 @@ const togglePermissionsPopover = (event) => {
                         <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Registro facial para
                             asistencia</h2>
                     </div>
-                    <FileUpload name="facial_image" @select="onFileSelect" :showUploadButton="false"
-                        :showCancelButton="false" accept="image/*" :maxFileSize="1000000">
-                        <template #empty>
-                            <div
+                    <FileUpload ref="fileUploadRef" name="facial_image" @select="onFileSelect" :showUploadButton="false"
+                        :showCancelButton="false" accept="image/*" :maxFileSize="1024000">
+                        <template #header="{ chooseCallback, clearCallback, files }">
+                            <Button label="Subir imagen" icon="pi pi-upload" outlined @click="chooseCallback" />
+                        </template>
+                        <template #content="{ chooseCallback, clearCallback, files }">
+                            <!-- ✨ El v-if ahora comprueba imagePreview en lugar de files.length -->
+                            <div v-if="imagePreview"
+                                class="flex flex-col items-center justify-center gap-4 p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+                                <img :src="imagePreview" alt="Vista previa"
+                                    class="w-48 h-48 rounded-full object-cover" />
+                                <Button label="Quitar imagen" icon="pi pi-times" severity="danger" outlined
+                                    @click="() => clearImage(clearCallback)" />
+                            </div>
+                            <div v-else
                                 class="flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-center">
                                 <i class="pi pi-image text-5xl text-gray-400 dark:text-gray-500"></i>
-                                <p class="text-gray-500 dark:text-gray-400">Sube una nueva foto para actualizar el
+                                <p class="text-gray-500 dark:text-gray-400">Sube o arrastra una nueva foto para actualizar el
                                     registro.</p>
-                                <div class="flex gap-2 mt-2">
-                                    <Button label="Subir imagen" icon="pi pi-upload" outlined />
-                                    <Button label="Usar cámara" icon="pi pi-camera" outlined severity="secondary" />
-                                </div>
                             </div>
                         </template>
                     </FileUpload>
+                    <small v-if="form.errors.facial_image" class="text-red-500 mt-1">{{ form.errors.facial_image
+                    }}</small>
                     <Divider />
 
                     <!-- === ACCESO AL SISTEMA === -->

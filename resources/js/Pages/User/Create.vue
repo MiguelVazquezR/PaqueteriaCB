@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { Head, Link, useForm} from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 import InputLabel from '@/Components/InputLabel.vue';
@@ -25,7 +25,8 @@ const items = ref([
     { label: 'Crear usuario' }
 ]);
 const op = ref(); // Referencia para el Popover
-
+const fileUploadRef = ref(null);
+const imagePreview = ref(null);
 const relationships = [
     'Madre/Padre',
     'Hermano/Hermana',
@@ -81,8 +82,23 @@ function showSuccess() {
     toast.add({ severity: 'success', summary: 'Éxito', detail: 'Usuario creado correctamente', life: 3000 });
 }
 
+// Updated file select method
 const onFileSelect = (event) => {
-    form.facial_image = event.files[0];
+    const file = event.files[0];
+    if (file) {
+        form.facial_image = file;
+        imagePreview.value = URL.createObjectURL(file);
+    }
+};
+
+// Method to clear the selected image
+const clearImage = () => {
+    form.facial_image = null;
+    imagePreview.value = null;
+    // ✨ Usamos la referencia para limpiar el estado interno del componente
+    if (fileUploadRef.value) {
+        fileUploadRef.value.clear();
+    }
 };
 
 const submit = () => {
@@ -247,21 +263,32 @@ const togglePermissionsPopover = (event) => {
                         <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Registro facial para
                             asistencia</h2>
                     </div>
-                    <FileUpload name="facial_image" @select="onFileSelect" :showUploadButton="false"
-                        :showCancelButton="false" accept="image/*" :maxFileSize="1000000">
-                        <template #empty>
-                            <div
-                                class="flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-center">
+                    <FileUpload
+                        ref="fileUploadRef"
+                        name="facial_image"
+                        @select="onFileSelect"
+                        :showUploadButton="false"
+                        :showCancelButton="false"
+                        accept="image/*"
+                        :maxFileSize="1024000"
+                    >
+                        <!-- Usamos el slot #header para obtener los callbacks pero no renderizamos nada -->
+                        <template #header="{ chooseCallback, clearCallback, files }">
+                            <Button label="Subir imagen" icon="pi pi-upload" outlined @click="chooseCallback" />
+                        </template>
+                        <!-- El slot #content ahora maneja ambos estados: con y sin imagen -->
+                        <template #content="{ chooseCallback, clearCallback, files }">
+                            <div v-if="files.length > 0" class="flex flex-col items-center justify-center gap-4 p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+                                <img :src="imagePreview" alt="Vista previa" class="w-48 h-48 rounded-full object-cover" />
+                                <Button label="Quitar imagen" icon="pi pi-times" severity="danger" outlined @click="() => clearImage(clearCallback)" />
+                            </div>
+                            <div v-else class="flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-center">
                                 <i class="pi pi-image text-5xl text-gray-400 dark:text-gray-500"></i>
-                                <p class="text-gray-500 dark:text-gray-400">Sube una foto clara del rostro del empleado.
-                                </p>
-                                <div class="flex gap-2 mt-2">
-                                    <Button label="Subir imagen" icon="pi pi-upload" outlined />
-                                    <Button label="Usar cámara" icon="pi pi-camera" outlined severity="secondary" />
-                                </div>
+                                <p class="text-gray-500 dark:text-gray-400">Sube o arrastra una foto clara del rostro del empleado.</p>
                             </div>
                         </template>
                     </FileUpload>
+                    <small v-if="form.errors.facial_image" class="text-red-500 mt-1">{{ form.errors.facial_image }}</small>
                     <Divider />
 
                     <!-- === ACCESO AL SISTEMA === -->
