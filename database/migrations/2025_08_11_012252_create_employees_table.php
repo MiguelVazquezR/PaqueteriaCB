@@ -32,6 +32,8 @@ return new class extends Migration
             $table->string('emergency_contact_phone')->nullable();
             $table->string('emergency_contact_relationship')->nullable();
             $table->boolean('is_active')->default(true);
+            $table->date('termination_date')->nullable();
+            $table->string('termination_reason')->nullable();
             $table->timestamps();
         });
     }

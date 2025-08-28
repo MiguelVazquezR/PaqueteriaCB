@@ -9,6 +9,7 @@ use App\Models\Incident;
 use App\Models\IncidentType;
 use App\Models\Payroll;
 use App\Models\PayrollPeriod;
+use App\Models\VacationLedger;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
@@ -16,15 +17,14 @@ use App\Services\IncidentService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
+use App\Services\VacationService;
 
 class IncidentController extends Controller
 {
-    protected $incidentService;
-
-    public function __construct(IncidentService $incidentService)
-    {
-        $this->incidentService = $incidentService;
-    }
+    public function __construct(
+        protected IncidentService $incidentService,
+        protected VacationService $vacationService
+    ) {}
 
     public function index(Request $request)
     {
@@ -105,6 +105,8 @@ class IncidentController extends Controller
         ]);
 
         $date = Carbon::parse($validated['date']);
+        $employee = Employee::find($validated['employee_id']);
+        $vacationType = IncidentType::where('code', 'VAC')->first();
 
         // 1. Borrar incidencias o asistencias existentes para ese día para evitar duplicados
         Incident::where('employee_id', $validated['employee_id'])
@@ -117,7 +119,7 @@ class IncidentController extends Controller
             ->delete();
 
         // 2. Crear la nueva incidencia
-        Incident::create([
+        $incident = Incident::create([
             'employee_id' => $validated['employee_id'],
             'incident_type_id' => $validated['incident_type_id'],
             'start_date' => $date,
@@ -125,7 +127,19 @@ class IncidentController extends Controller
             'status' => 'approved', // O 'pending' si requiere aprobación
         ]);
 
-        return back()->with('success', 'Incidencia registrada.');
+        if ($vacationType && $incident->incident_type_id == $vacationType->id) {
+            VacationLedger::create([
+                'employee_id' => $employee->id,
+                'type' => 'taken',
+                'date' => $date,
+                'days' => -1, // Un día tomado
+                'balance' => 0, // Se recalculará
+                'description' => 'Vacaciones registradas desde incidencias.',
+            ]);
+            $this->vacationService->recalculateLedgerForEmployee($employee);
+        }
+
+        return back();
     }
 
     public function removeDayIncident(Request $request)
@@ -135,13 +149,29 @@ class IncidentController extends Controller
             'date' => 'required|date',
         ]);
         $date = Carbon::parse($validated['date']);
+        $employee = Employee::find($validated['employee_id']);
+        $vacationType = IncidentType::where('code', 'VAC')->first();
 
-        Incident::where('employee_id', $validated['employee_id'])
+        $incident = Incident::where('employee_id', $validated['employee_id'])
             ->whereDate('start_date', '<=', $date)
             ->whereDate('end_date', '>=', $date)
             ->delete();
 
-        return back()->with('success', 'Incidencia eliminada.');
+        if ($incident) {
+            $isVacation = $vacationType && $incident->incident_type_id == $vacationType->id;
+            $incident->delete();
+
+            if ($isVacation) {
+                // Borrar el registro del historial y recalcular
+                VacationLedger::where('employee_id', $employee->id)
+                    ->where('type', 'taken')
+                    ->whereDate('date', $date)
+                    ->delete();
+                $this->vacationService->recalculateLedgerForEmployee($employee);
+            }
+        }
+
+        return back();
     }
 
     public function updateComment(Request $request)
@@ -173,7 +203,7 @@ class IncidentController extends Controller
         $payroll->comments = $validated['comments'];
         $payroll->save();
 
-        return back()->with('success', 'Comentario guardado.');
+        return back();
     }
 
     public function toggleLateStatus(Request $request)

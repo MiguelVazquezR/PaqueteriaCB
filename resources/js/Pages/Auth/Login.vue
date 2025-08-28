@@ -75,7 +75,7 @@ const submit = () => {
                             ¿Olvidaste tu contraseña?
                             </Link>
                         </div>
-                        <Button @click="submit" label="Iniciar sesión" class="w-full"></Button>
+                        <Button @click="submit" label="Iniciar sesión" :loading="form.processing" class="w-full"></Button>
                     </div>
                 </div>
             </div>

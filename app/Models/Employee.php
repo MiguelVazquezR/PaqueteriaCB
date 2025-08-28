@@ -19,7 +19,6 @@ class Employee extends Model
         'hire_date',
         'base_salary',
         'aws_rekognition_face_id',
-        'is_active',
         'phone',
         'birth_date',
         'address',
@@ -29,10 +28,15 @@ class Employee extends Model
         'emergency_contact_name',
         'emergency_contact_phone',
         'emergency_contact_relationship',
+        'is_active',
+        'vacation_balance',
+        'termination_date',
+        'termination_reason',
     ];
 
     protected $casts = [
         'hire_date' => 'date',
+        'termination_date' => 'date',
         'birth_date' => 'date',
         'is_active' => 'boolean',
         'base_salary' => 'decimal:2',

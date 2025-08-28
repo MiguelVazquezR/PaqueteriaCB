@@ -2,18 +2,19 @@
 import { ref, computed } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-
 import InputLabel from '@/Components/InputLabel.vue';
 import CruzIcon from '@/Components/Icons/CruzIcon.vue';
 import FacialIcon from '@/Components/Icons/FacialIcon.vue';
 import { PrimeIcons } from '@primevue/core/api';
 import { useToast } from 'primevue';
+import { format } from 'date-fns';
 
 // --- Props ---
 const props = defineProps({
     user: Object,
     branches: Array,
     roles: Array,
+    schedules: Array,
     errors: Object,
 });
 
@@ -25,6 +26,7 @@ const items = ref([
     { label: 'Editar usuario' }
 ]);
 const op = ref(); // Referencia para el Popover
+const scheduleOp = ref(); // Ref para el popover del horario
 const imagePreview = ref(props.user.profile_photo_path ? props.user.profile_photo_url : null);
 const fileUploadRef = ref(null);
 const relationships = [
@@ -33,27 +35,39 @@ const relationships = [
 
 // Inicializamos el formulario con los datos del usuario y su empleado
 const form = useForm({
-    _method: 'PUT', // Importante para que Inertia maneje la subida de archivos en una petición PUT
+    _method: 'PUT',
+    // Info Personal
     first_name: props.user.employee?.first_name || '',
     last_name: props.user.employee?.last_name || '',
     phone: props.user.employee?.phone || '',
     birth_date: props.user.employee?.birth_date || null,
     address: props.user.employee?.address || '',
+
+    // Info Laboral
     employee_number: props.user.employee?.employee_number || '',
     hire_date: props.user.employee?.hire_date || null,
     branch_id: props.user.employee?.branch_id || null,
     position: props.user.employee?.position || '',
+    schedule_id: (props.user.employee?.schedules && props.user.employee.schedules.length > 0) ? props.user.employee.schedules[0].id : null,
     curp: props.user.employee?.curp || '',
     rfc: props.user.employee?.rfc || '',
     nss: props.user.employee?.nss || '',
     base_salary: props.user.employee?.base_salary || null,
     is_active: props.user.employee?.is_active ?? true,
+    termination_date: props.user.employee?.termination_date || null,
+    termination_reason: props.user.employee?.termination_reason || '',
+
+    // Contacto Emergencia
     emergency_contact_name: props.user.employee?.emergency_contact_name || '',
     emergency_contact_phone: props.user.employee?.emergency_contact_phone || '',
     emergency_contact_relationship: props.user.employee?.emergency_contact_relationship || '',
+
+    // Acceso al sistema
     email: props.user.email,
     password: '',
     role_id: props.user.roles[0]?.id || null,
+
+    // Imagen
     facial_image: null,
     delete_photo: false,
 });
@@ -63,6 +77,11 @@ const selectedRolePermissions = computed(() => {
     if (!form.role_id) return [];
     const selected = props.roles.find(r => r.id === form.role_id);
     return selected ? selected.permissions : [];
+});
+
+const selectedSchedule = computed(() => {
+    if (!form.schedule_id) return null;
+    return props.schedules.find(s => s.id === form.schedule_id);
 });
 
 // --- Methods ---
@@ -97,6 +116,24 @@ const togglePermissionsPopover = (event) => {
     if (form.role_id) {
         op.value.toggle(event);
     }
+};
+
+const toggleSchedulePopover = (event) => {
+    if (form.schedule_id) {
+        scheduleOp.value.toggle(event);
+    }
+};
+
+const formatTime = (timeString) => {
+    if (!timeString) return '';
+    const [hours, minutes] = timeString.split(':');
+    const date = new Date();
+    date.setHours(hours, minutes);
+    return format(date, 'hh:mm a');
+};
+
+const getDayFromSchedule = (dayOfWeek) => {
+    return selectedSchedule.value?.details.find(d => d.day_of_week === dayOfWeek);
 };
 
 </script>
@@ -185,6 +222,17 @@ const togglePermissionsPopover = (event) => {
                             }}</small>
                         </div>
                         <div>
+                            <div class="flex items-center gap-2">
+                                <InputLabel for="schedule_id" value="Horario*" />
+                                <i class="pi pi-book cursor-pointer text-gray-400" @click="toggleSchedulePopover"></i>
+                            </div>
+                            <Select id="schedule_id" v-model="form.schedule_id" :options="schedules" optionLabel="name"
+                                optionValue="id" placeholder="Selecciona un horario" class="w-full"
+                                :invalid="!!form.errors.schedule_id" />
+                            <small v-if="form.errors.schedule_id" class="text-red-500 mt-1">{{ form.errors.schedule_id
+                            }}</small>
+                        </div>
+                        <div>
                             <InputLabel for="curp" value="CURP" />
                             <InputText id="curp" v-model="form.curp" class="w-full" />
                         </div>
@@ -209,6 +257,23 @@ const togglePermissionsPopover = (event) => {
                                 :options="[{ label: 'Activo', value: true }, { label: 'Inactivo', value: false }]"
                                 optionLabel="label" optionValue="value" size="large" class="w-full" />
                         </div>
+                        <template v-if="!form.is_active">
+                            <div>
+                                <InputLabel for="termination_date" value="Fecha de baja*" />
+                                <DatePicker id="termination_date" v-model="form.termination_date" dateFormat="dd/mm/yy"
+                                    showIcon fluid iconDisplay="input" class="w-full"
+                                    :invalid="!!form.errors.termination_date" />
+                                <small v-if="form.errors.termination_date" class="text-red-500 mt-1">{{
+                                    form.errors.termination_date }}</small>
+                            </div>
+                            <div>
+                                <InputLabel for="termination_reason" value="Motivo de baja*" />
+                                <InputText id="termination_reason" v-model="form.termination_reason" class="w-full"
+                                    :invalid="!!form.errors.termination_reason" />
+                                <small v-if="form.errors.termination_reason" class="text-red-500 mt-1">{{
+                                    form.errors.termination_reason }}</small>
+                            </div>
+                        </template>
                     </div>
                     <Divider />
 
@@ -260,7 +325,8 @@ const togglePermissionsPopover = (event) => {
                             <div v-else
                                 class="flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-center">
                                 <i class="pi pi-image text-5xl text-gray-400 dark:text-gray-500"></i>
-                                <p class="text-gray-500 dark:text-gray-400">Sube o arrastra una nueva foto para actualizar el
+                                <p class="text-gray-500 dark:text-gray-400">Sube o arrastra una nueva foto para
+                                    actualizar el
                                     registro.</p>
                             </div>
                         </template>
@@ -330,6 +396,45 @@ const togglePermissionsPopover = (event) => {
                         <span class="capitalize">{{ permission.name.replace(/_/g, ' ') }}</span>
                     </li>
                 </ul>
+            </div>
+        </div>
+    </Popover>
+
+    <!-- POPOVER PARA DETALLES DEL HORARIO -->
+    <Popover ref="scheduleOp">
+        <div class="p-4 w-96">
+            <h3 class="font-bold text-lg mb-4">Detalles del horario</h3>
+            <div v-if="selectedSchedule">
+                <h4 class="font-semibold mb-2">Horario de "{{ selectedSchedule.name }}"</h4>
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-gray-50 text-xs uppercase">
+                        <tr>
+                            <th class="px-2 py-1">Día</th>
+                            <th class="px-2 py-1">Entrada</th>
+                            <th class="px-2 py-1">Salida</th>
+                            <th class="px-2 py-1">Comida (min)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="dayName in ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']"
+                            :key="dayName">
+                            <td class="px-2 py-1 font-medium">{{ dayName }}</td>
+                            <template
+                                v-if="getDayFromSchedule(['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].indexOf(dayName) + 1)">
+                                <td class="px-2 py-1">{{ formatTime(getDayFromSchedule(['Lunes', 'Martes', 'Miércoles',
+                                    'Jueves', 'Viernes', 'Sábado', 'Domingo'].indexOf(dayName) + 1).start_time) }}</td>
+                                <td class="px-2 py-1">{{ formatTime(getDayFromSchedule(['Lunes', 'Martes', 'Miércoles',
+                                    'Jueves', 'Viernes', 'Sábado', 'Domingo'].indexOf(dayName) + 1).end_time) }}</td>
+                                <td class="px-2 py-1">{{ getDayFromSchedule(['Lunes', 'Martes', 'Miércoles', 'Jueves',
+                                    'Viernes', 'Sábado', 'Domingo'].indexOf(dayName) + 1).meal_minutes }}</td>
+                            </template>
+                            <template v-else>
+                                <td colspan="3" class="px-2 py-1 text-center bg-green-100 text-green-700 rounded">
+                                    Descanso</td>
+                            </template>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </Popover>

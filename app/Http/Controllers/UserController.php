@@ -4,10 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\Employee;
-use App\Models\Incident;
-use App\Models\IncidentType;
 use App\Models\User;
-use Carbon\Carbon;
+use App\Models\VacationLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -15,6 +13,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
+use App\Models\Schedule;
 
 class UserController extends Controller
 {
@@ -140,6 +139,7 @@ class UserController extends Controller
         return Inertia::render('User/Create', [
             'branches' => Branch::where('is_active', true)->get(['id', 'name']),
             'roles' => Role::with('permissions:name')->get(['id', 'name']),
+            'schedules' => Schedule::with('details')->get(),
         ]);
     }
 
@@ -161,6 +161,9 @@ class UserController extends Controller
             'nss' => 'nullable|string|max:11|unique:employees',
             'base_salary' => 'required|numeric|min:0',
             'is_active' => 'required|boolean',
+            'schedule_id' => 'required|exists:schedules,id',
+            'termination_date' => 'required_if:is_active,false|nullable|date',
+            'termination_reason' => 'required_if:is_active,false|nullable|string|max:255',
 
             // Contacto de Emergencia
             'emergency_contact_name' => 'nullable|string|max:255',
@@ -175,30 +178,34 @@ class UserController extends Controller
             'facial_image' => ['nullable', 'image', 'max:1024'], // 1MB max size
         ]);
 
-        // Crear el empleado primero
-        $employee = Employee::create($request->except(['create_user_account', 'email', 'password', 'facial_image']));
+        DB::transaction(function () use ($request) {
+            $employeeData = $request->except(['create_user_account', 'email', 'password', 'role_id', 'facial_image', 'schedule_id']);
+            $employee = Employee::create($employeeData);
 
-        // Si se indicó crear cuenta de usuario, la creamos y la asociamos
-        if ($request->input('create_user_account')) {
-            $user = User::create([
-                'name' => $request->input('first_name') . ' ' . $request->input('last_name'),
-                'email' => $request->input('email'),
-                'password' => Hash::make($request->input('password')),
-            ]);
+            // Asignar el horario al empleado
+            $employee->schedules()->attach($request->input('schedule_id'), ['start_date' => now()]);
 
-            // Si se subió una imagen, usamos el método de Jetstream para guardarla como foto de perfil.
-            if ($request->hasFile('facial_image')) {
-                $user->updateProfilePhoto($request->file('facial_image'));
+            if ($request->input('create_user_account')) {
+                $user = User::create([
+                    'name' => $request->input('first_name') . ' ' . $request->input('last_name'),
+                    'email' => $request->input('email'),
+                    'password' => Hash::make($request->input('password')),
+                ]);
+
+                // Si se subió una imagen, usamos el método de Jetstream para guardarla como foto de perfil.
+                if ($request->hasFile('facial_image')) {
+                    $user->updateProfilePhoto($request->file('facial_image'));
+                }
+
+                // ✨ Asignar el rol al nuevo usuario
+                $role = Role::findById($request->input('role_id'));
+                $user->assignRole($role);
+
+                // Ligamos el usuario al empleado
+                $employee->user_id = $user->id;
+                $employee->save();
             }
-
-            // ✨ Asignar el rol al nuevo usuario
-            $role = Role::findById($request->input('role_id'));
-            $user->assignRole($role);
-
-            // Ligamos el usuario al empleado
-            $employee->user_id = $user->id;
-            $employee->save();
-        }
+        });
 
         return redirect()->route('users.index');
     }
@@ -206,12 +213,13 @@ class UserController extends Controller
     public function edit(User $user)
     {
         // Cargamos ambas relaciones: el empleado y los roles asignados al usuario.
-        $user->load(['employee', 'roles:id']);
+        $user->load(['employee.schedules', 'roles:id']);
 
         return Inertia::render('User/Edit', [
             'user' => $user,
             'branches' => Branch::where('is_active', true)->get(['id', 'name']),
             'roles' => Role::with('permissions:name')->get(['id', 'name']),
+            'schedules' => Schedule::with('details')->get(),
         ]);
     }
 
@@ -235,6 +243,9 @@ class UserController extends Controller
             'nss' => ['nullable', 'string', 'max:11', Rule::unique('employees')->ignore($employee?->id)],
             'base_salary' => 'required|numeric|min:0',
             'is_active' => 'required|boolean',
+            'schedule_id' => 'required|exists:schedules,id',
+            'termination_date' => 'required_if:is_active,false|nullable|date',
+            'termination_reason' => 'required_if:is_active,false|nullable|string|max:255',
 
             // Contacto de Emergencia
             'emergency_contact_name' => 'nullable|string|max:255',
@@ -249,81 +260,59 @@ class UserController extends Controller
             'delete_photo' => 'boolean',
         ]);
 
-        // Actualizar el registro del usuario
-        $user->update([
-            'name' => $request->input('first_name') . ' ' . $request->input('last_name'),
-            'email' => $request->input('email'),
-        ]);
+        DB::transaction(function () use ($request, $user, $employee) {
+            // Actualizar el registro del usuario
+            $user->update([
+                'name' => $request->input('first_name') . ' ' . $request->input('last_name'),
+                'email' => $request->input('email'),
+            ]);
 
-        // actualizar o eliminar la foto
-        if ($request->hasFile('facial_image')) {
-            $user->updateProfilePhoto($request->file('facial_image'));
-        } elseif ($request->input('delete_photo')) {
-            $user->deleteProfilePhoto();
-        }
+            // actualizar o eliminar la foto
+            if ($request->hasFile('facial_image')) {
+                $user->updateProfilePhoto($request->file('facial_image'));
+            } elseif ($request->input('delete_photo')) {
+                $user->deleteProfilePhoto();
+            }
 
-        // ✨ Sincronizar el rol (quita los anteriores y asigna el nuevo)
-        $role = Role::findById($request->input('role_id'));
-        $user->syncRoles($role);
+            // ✨ Sincronizar el rol (quita los anteriores y asigna el nuevo)
+            $role = Role::findById($request->input('role_id'));
+            $user->syncRoles($role);
 
-        // Si se proporcionó una nueva contraseña, la actualizamos
-        if ($request->filled('password')) {
-            $user->password = Hash::make($request->input('password'));
-            $user->save();
-        }
+            // Si se proporcionó una nueva contraseña, la actualizamos
+            if ($request->filled('password')) {
+                $user->password = Hash::make($request->input('password'));
+                $user->save();
+            }
 
-        // Actualizar el registro del empleado asociado
-        if ($employee) {
-            $employee->update($request->except(['email', 'password', 'role_id', 'facial_image']));
-        }
+            if ($employee) {
+                $employeeData = $request->except(['email', 'password', 'role_id', 'facial_image', 'schedule_id']);
+                // Limpiar los campos de baja si el empleado se reactiva
+                if ($request->input('is_active')) {
+                    $employeeData['termination_date'] = null;
+                    $employeeData['termination_reason'] = null;
+                }
+                $employee->update($employeeData);
+                // Sincronizar el horario
+                $employee->schedules()->sync([$request->input('schedule_id') => ['start_date' => now()]]);
+            }
+        });
 
         return redirect()->route('users.index');
     }
 
     public function show(User $user)
     {
-        // Cargamos todas las relaciones necesarias para la vista de detalle
-        $user->load(['employee.branch']);
-
-        // --- LÓGICA PARA EL HISTORIAL DE VACACIONES ---
-        $vacationHistory = collect();
-        if ($user->employee) {
-            $vacationType = IncidentType::where('code', 'VAC')->first();
-
-            if ($vacationType) {
-                $vacationsTaken = Incident::where('employee_id', $user->employee->id)
-                    ->where('incident_type_id', $vacationType->id)
-                    ->orderBy('start_date', 'asc')
-                    ->get();
-
-                // Mapear las vacaciones tomadas
-                foreach ($vacationsTaken as $vacation) {
-                    $days = Carbon::parse($vacation->start_date)->diffInDays(Carbon::parse($vacation->end_date)) + 1;
-                    $vacationHistory->push([
-                        'date' => $vacation->start_date,
-                        'type' => 'Tomadas',
-                        'days' => -$days, // Negativo porque se descuentan
-                    ]);
-                }
-            }
-
-            // Simular saldo inicial y días otorgados para el ejemplo
-            $vacationHistory->push(['date' => $user->employee->hire_date, 'type' => 'Iniciales', 'days' => 6]);
-            $vacationHistory->push(['date' => Carbon::parse($user->employee->hire_date)->addYear(), 'type' => 'Otorgadas', 'days' => 12]);
-
-            // Ordenar por fecha y calcular el saldo corriente
-            $balance = 0;
-            $vacationHistory = $vacationHistory->sortBy('date')->map(function ($item) use (&$balance) {
-                $balance += $item['days'];
-                $item['balance'] = $balance;
-                return $item;
-            })->values();
-        }
-
-        // Transformamos los datos del usuario para la vista
+        $user->load(['employee.branch', 'employee.schedules.details']);
         $userData = $user->toArray();
-        // Añadimos el historial de vacaciones a los datos
-        $userData['vacation_history'] = $vacationHistory;
+
+        // ✨ Obtener el historial desde la nueva tabla
+        if ($user->employee) {
+            $userData['vacation_history'] = VacationLedger::where('employee_id', $user->employee->id)
+                ->orderBy('date')
+                ->get();
+        } else {
+            $userData['vacation_history'] = [];
+        }
 
         return Inertia::render('User/Show', [
             'user' => $userData,

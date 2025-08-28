@@ -2,18 +2,19 @@
 import { ref, computed } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-
 import InputLabel from '@/Components/InputLabel.vue';
 import CruzIcon from '@/Components/Icons/CruzIcon.vue';
 import FacialIcon from '@/Components/Icons/FacialIcon.vue';
 import { PrimeIcons } from '@primevue/core/api';
 import { useToast } from 'primevue';
+import { format } from 'date-fns'; // Importar format
 
 
 // --- Props ---
 const props = defineProps({
     branches: Array,
     roles: Array,
+    schedules: Array,
     errors: Object, // Errores de validación
 });
 
@@ -25,6 +26,7 @@ const items = ref([
     { label: 'Crear usuario' }
 ]);
 const op = ref(); // Referencia para el Popover
+const scheduleOp = ref();
 const fileUploadRef = ref(null);
 const imagePreview = ref(null);
 const relationships = [
@@ -54,6 +56,8 @@ const form = useForm({
     nss: '',
     base_salary: null,
     is_active: true,
+    termination_date: null,
+    termination_reason: '',
 
     // Contacto Emergencia
     emergency_contact_name: '',
@@ -75,6 +79,12 @@ const selectedRolePermissions = computed(() => {
     if (!form.role_id) return [];
     const selected = props.roles.find(r => r.id === form.role_id);
     return selected ? selected.permissions : [];
+});
+
+// ✨ Computed property para el horario seleccionado
+const selectedSchedule = computed(() => {
+    if (!form.schedule_id) return null;
+    return props.schedules.find(s => s.id === form.schedule_id);
 });
 
 // --- Methods ---
@@ -116,6 +126,24 @@ const togglePermissionsPopover = (event) => {
     if (form.role_id) {
         op.value.toggle(event);
     }
+};
+
+const toggleSchedulePopover = (event) => {
+    if (form.schedule_id) {
+        scheduleOp.value.toggle(event);
+    }
+};
+
+const formatTime = (timeString) => {
+    if (!timeString) return '';
+    const [hours, minutes] = timeString.split(':');
+    const date = new Date();
+    date.setHours(hours, minutes);
+    return format(date, 'hh:mm a');
+};
+
+const getDayFromSchedule = (dayOfWeek) => {
+    return selectedSchedule.value?.details.find(d => d.day_of_week === dayOfWeek);
 };
 
 </script>
@@ -204,6 +232,17 @@ const togglePermissionsPopover = (event) => {
                             }}</small>
                         </div>
                         <div>
+                            <div class="flex items-center gap-2">
+                                <InputLabel for="schedule_id" value="Horario*" />
+                                <i class="pi pi-book cursor-pointer text-gray-400" @click="toggleSchedulePopover"></i>
+                            </div>
+                            <Select id="schedule_id" v-model="form.schedule_id" :options="schedules" optionLabel="name"
+                                optionValue="id" placeholder="Selecciona un horario" class="w-full"
+                                :invalid="!!form.errors.schedule_id" />
+                            <small v-if="form.errors.schedule_id" class="text-red-500 mt-1">{{ form.errors.schedule_id
+                                }}</small>
+                        </div>
+                        <div>
                             <InputLabel for="curp" value="CURP" />
                             <InputText id="curp" v-model="form.curp" class="w-full" />
                         </div>
@@ -229,6 +268,24 @@ const togglePermissionsPopover = (event) => {
                                 optionLabel="label" optionValue="value" size="large"
                                 placeholder="Selecciona la sucursal" class="w-full" />
                         </div>
+                        <!-- Campos condicionales de Baja -->
+                        <template v-if="!form.is_active">
+                            <div>
+                                <InputLabel for="termination_date" value="Fecha de baja*" />
+                                <DatePicker id="termination_date" v-model="form.termination_date" dateFormat="dd/mm/yy"
+                                    showIcon fluid iconDisplay="input" class="w-full"
+                                    :invalid="!!form.errors.termination_date" />
+                                <small v-if="form.errors.termination_date" class="text-red-500 mt-1">{{
+                                    form.errors.termination_date }}</small>
+                            </div>
+                            <div>
+                                <InputLabel for="termination_reason" value="Motivo de baja*" />
+                                <InputText id="termination_reason" v-model="form.termination_reason" class="w-full"
+                                    :invalid="!!form.errors.termination_reason" />
+                                <small v-if="form.errors.termination_reason" class="text-red-500 mt-1">{{
+                                    form.errors.termination_reason }}</small>
+                            </div>
+                        </template>
                     </div>
                     <Divider />
 
@@ -263,32 +320,31 @@ const togglePermissionsPopover = (event) => {
                         <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Registro facial para
                             asistencia</h2>
                     </div>
-                    <FileUpload
-                        ref="fileUploadRef"
-                        name="facial_image"
-                        @select="onFileSelect"
-                        :showUploadButton="false"
-                        :showCancelButton="false"
-                        accept="image/*"
-                        :maxFileSize="1024000"
-                    >
+                    <FileUpload ref="fileUploadRef" name="facial_image" @select="onFileSelect" :showUploadButton="false"
+                        :showCancelButton="false" accept="image/*" :maxFileSize="1024000">
                         <!-- Usamos el slot #header para obtener los callbacks pero no renderizamos nada -->
                         <template #header="{ chooseCallback, clearCallback, files }">
                             <Button label="Subir imagen" icon="pi pi-upload" outlined @click="chooseCallback" />
                         </template>
                         <!-- El slot #content ahora maneja ambos estados: con y sin imagen -->
                         <template #content="{ chooseCallback, clearCallback, files }">
-                            <div v-if="files.length > 0" class="flex flex-col items-center justify-center gap-4 p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
-                                <img :src="imagePreview" alt="Vista previa" class="w-48 h-48 rounded-full object-cover" />
-                                <Button label="Quitar imagen" icon="pi pi-times" severity="danger" outlined @click="() => clearImage(clearCallback)" />
+                            <div v-if="files.length > 0"
+                                class="flex flex-col items-center justify-center gap-4 p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
+                                <img :src="imagePreview" alt="Vista previa"
+                                    class="w-48 h-48 rounded-full object-cover" />
+                                <Button label="Quitar imagen" icon="pi pi-times" severity="danger" outlined
+                                    @click="() => clearImage(clearCallback)" />
                             </div>
-                            <div v-else class="flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-center">
+                            <div v-else
+                                class="flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-center">
                                 <i class="pi pi-image text-5xl text-gray-400 dark:text-gray-500"></i>
-                                <p class="text-gray-500 dark:text-gray-400">Sube o arrastra una foto clara del rostro del empleado.</p>
+                                <p class="text-gray-500 dark:text-gray-400">Sube o arrastra una foto clara del rostro
+                                    del empleado.</p>
                             </div>
                         </template>
                     </FileUpload>
-                    <small v-if="form.errors.facial_image" class="text-red-500 mt-1">{{ form.errors.facial_image }}</small>
+                    <small v-if="form.errors.facial_image" class="text-red-500 mt-1">{{ form.errors.facial_image
+                    }}</small>
                     <Divider />
 
                     <!-- === ACCESO AL SISTEMA === -->
@@ -356,6 +412,45 @@ const togglePermissionsPopover = (event) => {
                         <span class="capitalize">{{ permission.name.replace(/_/g, ' ') }}</span>
                     </li>
                 </ul>
+            </div>
+        </div>
+    </Popover>
+
+    <!-- ✨ POPOVER PARA DETALLES DEL HORARIO ✨ -->
+    <Popover ref="scheduleOp">
+        <div class="p-4 w-96">
+            <h3 class="font-bold text-lg mb-4">Detalles del horario</h3>
+            <div v-if="selectedSchedule">
+                <h4 class="font-semibold mb-2">Horario de "{{ selectedSchedule.name }}"</h4>
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-gray-50 text-xs uppercase">
+                        <tr>
+                            <th class="px-2 py-1">Día</th>
+                            <th class="px-2 py-1">Entrada</th>
+                            <th class="px-2 py-1">Salida</th>
+                            <th class="px-2 py-1">Comida (min)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="dayName in ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']"
+                            :key="dayName">
+                            <td class="px-2 py-1 font-medium">{{ dayName }}</td>
+                            <template
+                                v-if="getDayFromSchedule(['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].indexOf(dayName) + 1)">
+                                <td class="px-2 py-1">{{ formatTime(getDayFromSchedule(['Lunes', 'Martes', 'Miércoles',
+                                    'Jueves', 'Viernes', 'Sábado', 'Domingo'].indexOf(dayName) + 1).start_time) }}</td>
+                                <td class="px-2 py-1">{{ formatTime(getDayFromSchedule(['Lunes', 'Martes', 'Miércoles',
+                                    'Jueves', 'Viernes', 'Sábado', 'Domingo'].indexOf(dayName) + 1).end_time) }}</td>
+                                <td class="px-2 py-1">{{ getDayFromSchedule(['Lunes', 'Martes', 'Miércoles', 'Jueves',
+                                    'Viernes', 'Sábado', 'Domingo'].indexOf(dayName) + 1).meal_minutes }}</td>
+                            </template>
+                            <template v-else>
+                                <td colspan="3" class="px-2 py-1 text-center bg-green-100 text-green-700 rounded">
+                                    Descanso</td>
+                            </template>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </Popover>
