@@ -7,141 +7,36 @@ const model = ref([
     {
         // label: 'UI Components',
         items: [
-            { label: 'Inicio', icon: 'pi pi-fw pi-home', to: route('dashboard') },
-            { label: 'Usuarios', icon: 'pi pi-fw pi-user', to: route('users.index') },
-            { label: 'Sucursales', icon: 'pi pi-fw pi-building', to: route('branches.index') },
-            { label: 'Incidencias', icon: 'pi pi-fw pi-calendar-times', to: route('incidents.index') },
-            { label: 'Bonos', icon: 'pi pi-fw pi-wallet', to: route('bonuses.index') },
+            { label: 'Inicio', icon: 'pi pi-fw pi-home', to: route('dashboard'), routeName: 'dashboard' },
+            { label: 'Usuarios', icon: 'pi pi-fw pi-user', to: route('users.index'), routeName: 'users.*' },
+            { label: 'Sucursales', icon: 'pi pi-fw pi-building', to: route('branches.index'), routeName: 'branches.*' },
+            { label: 'Incidencias', icon: 'pi pi-fw pi-calendar-times', to: route('incidents.index'), routeName: 'incidents.*' },
+            { label: 'Bonos', icon: 'pi pi-fw pi-wallet', to: route('bonuses.index'), routeName: 'bonuses.*' },
             {
                 label: 'Configuraciones', icon: 'pi pi-fw pi-cog',
                 items: [
                     {
                         label: 'Roles y permisos',
                         icon: 'pi pi-key',
-                        to: route('settings.roles-permissions.index')
+                        to: route('settings.roles-permissions.index'),
+                        routeName: 'settings.roles-permissions.*'
                     },
                     {
                         label: 'Días festivos',
                         icon: 'pi pi-calendar-times',
-                        to: route('settings.holidays.index')
+                        to: route('settings.holidays.index'),
+                        routeName: 'settings.holidays.*'
                     },
                     {
                         label: 'Horarios del personal',
                         icon: 'pi pi-clock',
-                        to: route('settings.schedules.index')
+                        to: route('settings.schedules.index'),
+                        routeName: 'settings.schedules.*'
                     },
                 ]
             },
         ]
     },
-    // {
-    //     label: 'Pages',
-    //     icon: 'pi pi-fw pi-briefcase',
-    //     to: '/pages',
-    //     items: [
-    //         {
-    //             label: 'Landing',
-    //             icon: 'pi pi-fw pi-globe',
-    //             to: '/landing'
-    //         },
-    //         {
-    //             label: 'Auth',
-    //             icon: 'pi pi-fw pi-user',
-    //             items: [
-    //                 {
-    //                     label: 'Login',
-    //                     icon: 'pi pi-fw pi-sign-in',
-    //                     to: '/auth/login'
-    //                 },
-    //                 {
-    //                     label: 'Error',
-    //                     icon: 'pi pi-fw pi-times-circle',
-    //                     to: '/auth/error'
-    //                 },
-    //                 {
-    //                     label: 'Access Denied',
-    //                     icon: 'pi pi-fw pi-lock',
-    //                     to: '/auth/access'
-    //                 }
-    //             ]
-    //         },
-    //         {
-    //             label: 'Crud',
-    //             icon: 'pi pi-fw pi-pencil',
-    //             to: '/pages/crud'
-    //         },
-    //         {
-    //             label: 'Not Found',
-    //             icon: 'pi pi-fw pi-exclamation-circle',
-    //             to: '/pages/notfound'
-    //         },
-    //         {
-    //             label: 'Empty',
-    //             icon: 'pi pi-fw pi-circle-off',
-    //             to: '/pages/empty'
-    //         }
-    //     ]
-    // },
-    // {
-    //     label: 'Hierarchy',
-    //     items: [
-    //         {
-    //             label: 'Submenu 1',
-    //             icon: 'pi pi-fw pi-bookmark',
-    //             items: [
-    //                 {
-    //                     label: 'Submenu 1.1',
-    //                     icon: 'pi pi-fw pi-bookmark',
-    //                     items: [
-    //                         { label: 'Submenu 1.1.1', icon: 'pi pi-fw pi-bookmark' },
-    //                         { label: 'Submenu 1.1.2', icon: 'pi pi-fw pi-bookmark' },
-    //                         { label: 'Submenu 1.1.3', icon: 'pi pi-fw pi-bookmark' }
-    //                     ]
-    //                 },
-    //                 {
-    //                     label: 'Submenu 1.2',
-    //                     icon: 'pi pi-fw pi-bookmark',
-    //                     items: [{ label: 'Submenu 1.2.1', icon: 'pi pi-fw pi-bookmark' }]
-    //                 }
-    //             ]
-    //         },
-    //         {
-    //             label: 'Submenu 2',
-    //             icon: 'pi pi-fw pi-bookmark',
-    //             items: [
-    //                 {
-    //                     label: 'Submenu 2.1',
-    //                     icon: 'pi pi-fw pi-bookmark',
-    //                     items: [
-    //                         { label: 'Submenu 2.1.1', icon: 'pi pi-fw pi-bookmark' },
-    //                         { label: 'Submenu 2.1.2', icon: 'pi pi-fw pi-bookmark' }
-    //                     ]
-    //                 },
-    //                 {
-    //                     label: 'Submenu 2.2',
-    //                     icon: 'pi pi-fw pi-bookmark',
-    //                     items: [{ label: 'Submenu 2.2.1', icon: 'pi pi-fw pi-bookmark' }]
-    //                 }
-    //             ]
-    //         }
-    //     ]
-    // },
-    // {
-    //     label: 'Get Started',
-    //     items: [
-    //         {
-    //             label: 'Documentation',
-    //             icon: 'pi pi-fw pi-book',
-    //             to: '/documentation'
-    //         },
-    //         {
-    //             label: 'View Source',
-    //             icon: 'pi pi-fw pi-github',
-    //             url: 'https://github.com/primefaces/sakai-vue',
-    //             target: '_blank'
-    //         }
-    //     ]
-    // }
 ]);
 </script>
 
