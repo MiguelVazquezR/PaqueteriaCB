@@ -13,7 +13,9 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
+use App\Services\RekognitionService;
 use App\Models\Schedule;
+use Illuminate\Support\Facades\Log;
 
 class UserController extends Controller
 {
@@ -143,7 +145,7 @@ class UserController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, RekognitionService $rekognitionService)
     {
         $request->validate([
             // Información Personal y Laboral
@@ -178,12 +180,34 @@ class UserController extends Controller
             'facial_image' => ['nullable', 'image', 'max:1024'], // 1MB max size
         ]);
 
-        DB::transaction(function () use ($request) {
+        DB::transaction(function () use ($request, $rekognitionService) {
             $employeeData = $request->except(['create_user_account', 'email', 'password', 'role_id', 'facial_image', 'schedule_id']);
             $employee = Employee::create($employeeData);
 
             // Asignar el horario al empleado
             $employee->schedules()->attach($request->input('schedule_id'), ['start_date' => now()]);
+
+             // Si el formulario incluye una imagen facial, la procesamos y la enviamos a AWS.
+            if ($request->hasFile('facial_image')) {
+                try {
+                    // Obtenemos el contenido binario de la imagen.
+                    $imageContents = $request->file('facial_image')->get();
+                    // Llamamos a nuestro servicio para indexar el rostro.
+                    $faceId = $rekognitionService->indexFace($imageContents, $employee->employee_number);
+
+                    if ($faceId) {
+                        // Si AWS devuelve un FaceId, lo asignamos al empleado.
+                        $employee->aws_rekognition_face_id = $faceId;
+                    } else {
+                        // Si no se detecta un rostro, podemos notificar al usuario.
+                        session()->flash('warning', 'Empleado creado, pero el rostro no pudo ser procesado por Rekognition. Asegúrate de que la imagen sea clara.');
+                    }
+                } catch (\Exception $e) {
+                    // Si ocurre un error con la API de AWS, lo registramos y notificamos.
+                    Log::error("Error al indexar rostro para empleado {$employee->employee_number}: " . $e->getMessage());
+                    session()->flash('warning', 'Empleado creado, pero hubo un error de comunicación al registrar el rostro.');
+                }
+            }
 
             if ($request->input('create_user_account')) {
                 $user = User::create([
@@ -223,7 +247,7 @@ class UserController extends Controller
         ]);
     }
 
-    public function update(Request $request, User $user)
+    public function update(Request $request, User $user, RekognitionService $rekognitionService)
     {
         $employee = $user->employee;
 
@@ -260,12 +284,35 @@ class UserController extends Controller
             'delete_photo' => 'boolean',
         ]);
 
-        DB::transaction(function () use ($request, $user, $employee) {
+        DB::transaction(function () use ($request, $user, $employee, $rekognitionService) {
             // Actualizar el registro del usuario
             $user->update([
                 'name' => $request->input('first_name') . ' ' . $request->input('last_name'),
                 'email' => $request->input('email'),
             ]);
+
+             if ($employee) {
+                $currentFaceId = $employee->aws_rekognition_face_id;
+
+                // Caso 1: Se sube una NUEVA imagen facial.
+                if ($request->hasFile('facial_image')) {
+                    // Si ya existía un rostro en AWS, lo eliminamos para evitar duplicados.
+                    if ($currentFaceId) {
+                        $rekognitionService->deleteFace($currentFaceId);
+                    }
+                    // Indexamos el nuevo rostro en la colección.
+                    $imageContents = $request->file('facial_image')->get();
+                    $newFaceId = $rekognitionService->indexFace($imageContents, $employee->employee_number);
+                    $employee->aws_rekognition_face_id = $newFaceId;
+                } 
+                // Caso 2: Se marca la casilla para ELIMINAR la foto existente.
+                elseif ($request->input('delete_photo') && $currentFaceId) {
+                    // Eliminamos el rostro de la colección de AWS.
+                    $rekognitionService->deleteFace($currentFaceId);
+                    // Eliminamos la referencia en nuestra base de datos.
+                    $employee->aws_rekognition_face_id = null;
+                }
+            }
 
             // actualizar o eliminar la foto
             if ($request->hasFile('facial_image')) {

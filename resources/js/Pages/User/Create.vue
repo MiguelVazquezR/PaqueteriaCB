@@ -7,7 +7,7 @@ import CruzIcon from '@/Components/Icons/CruzIcon.vue';
 import FacialIcon from '@/Components/Icons/FacialIcon.vue';
 import { PrimeIcons } from '@primevue/core/api';
 import { useToast } from 'primevue';
-import { format } from 'date-fns'; // Importar format
+import { format } from 'date-fns';
 
 
 // --- Props ---
@@ -55,6 +55,7 @@ const form = useForm({
     rfc: '',
     nss: '',
     base_salary: null,
+    schedule_id: null,
     is_active: true,
     termination_date: null,
     termination_reason: '',

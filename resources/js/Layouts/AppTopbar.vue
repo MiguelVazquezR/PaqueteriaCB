@@ -171,7 +171,7 @@ const attendanceStatus = computed(() => {
                         class="flex text-sm border-2 border-transparent rounded-full focus:outline-none focus:border-gray-300 transition">
                         <img class="size-9 rounded-full object-cover" :src="user.profile_photo_url" :alt="user.name">
                     </button>
-                    <Menu ref="menu" :model="userMenuItems" :popup="true" />
+                    <Menu ref="userMenu" :model="userMenuItems" :popup="true" />
                 </div>
             </div>
         </div>
