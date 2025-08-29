@@ -1,39 +1,136 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { useLayout } from '@/Layouts/composables/layout';
-import AppConfigurator from './AppConfigurator.vue';
-import { Link, router, usePage } from '@inertiajs/vue3';
+import { Link, router, usePage, useForm } from '@inertiajs/vue3';
+import { useToast } from 'primevue/usetoast';
+import { format } from 'date-fns';
+import es from 'date-fns/locale/es';
 
 const { toggleMenu: toggleSidebar, toggleDarkMode, isDarkTheme } = useLayout();
 const user = usePage().props.auth.user;
+const page = usePage(); // Crear una referencia a usePage()
 
 // --- Lógica para el Menú de Usuario ---
-const menu = ref();
-const menuItems = ref([
-    {
-        label: 'Opciones',
-        items: [
-            {
-                label: 'Perfil',
-                icon: 'pi pi-user',
-                command: () => {
-                    router.get(route('profile.show'));
-                }
-            },
-            {
-                label: 'Cerrar sesión',
-                icon: 'pi pi-sign-out',
-                command: () => {
-                    router.post(route('logout'));
-                }
-            }
-        ]
-    }
+const toast = useToast();
+const userMenu = ref();
+const userMenuItems = ref([
+    { label: 'Perfil', icon: 'pi pi-user', command: () => router.get(route('profile.show')) },
+    { label: 'Cerrar sesión', icon: 'pi pi-sign-out', command: () => router.post(route('logout')) }
 ]);
+const toggleUserMenu = (event) => { userMenu.value.toggle(event); };
 
-const toggleMenu = (event) => {
-    menu.value.toggle(event);
+const attendancePopover = ref();
+const attendanceModalVisible = ref(false);
+const video = ref(null);
+const canvas = ref(null);
+const stream = ref(null);
+const currentAction = ref(null);
+const form = useForm({ image: null });
+
+
+const toggleAttendancePopover = (event) => {
+    attendancePopover.value.toggle(event);
 };
+
+const openAttendanceModal = (action) => {
+    currentAction.value = action;
+    attendanceModalVisible.value = true;
+    setTimeout(() => {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(s => {
+                    stream.value = s;
+                    if (video.value) video.value.srcObject = s;
+                }).catch(err => {
+                    toast.add({ severity: 'error', summary: 'Error de Cámara', detail: 'No se pudo acceder a la cámara.', life: 3000 });
+                });
+        }
+    }, 100);
+};
+
+const closeAttendanceModal = () => {
+    attendanceModalVisible.value = false;
+    stream.value?.getTracks().forEach(track => track.stop());
+};
+
+const capture = () => {
+    const context = canvas.value.getContext('2d');
+    canvas.value.width = video.value.videoWidth;
+    canvas.value.height = video.value.videoHeight;
+    context.drawImage(video.value, 0, 0, video.value.videoWidth, video.value.videoHeight);
+    form.image = canvas.value.toDataURL('image/jpeg');
+
+    const routeName = currentAction.value === 'fichaje' ? 'attendances.store' : 'attendances.storeBreak';
+
+    form.post(route(routeName), {
+        preserveScroll: true,
+        onSuccess: () => closeAttendanceModal(),
+    });
+};
+
+// Usamos un watcher para reaccionar a los cambios en los mensajes flash de Jetstream.
+watch(() => page.props.flash, (flash) => {
+    if (flash && flash.success) {
+        toast.add({ severity: 'success', summary: 'Éxito', detail: flash.success, life: 5000 });
+    }
+    if (flash && flash.error) {
+        toast.add({ severity: 'error', summary: 'Error', detail: flash.error, life: 5000 });
+    }
+}, { deep: true });
+
+
+const attendanceStatus = computed(() => {
+    const status = page.props.auth.current_status;
+    const userName = page.props.auth.user.name.split(' ')[0];
+    const greeting = `Buenos días ${userName}`;
+
+    if (!status) {
+        return {
+            greeting,
+            message: 'No has registrado tu entrada.',
+            icon: 'pi pi-sign-in',
+            buttons: [
+                { label: 'Registrar Entrada', action: 'fichaje', severity: 'primary', icon: 'pi pi-sign-in' }
+            ]
+        };
+    }
+
+    const time = format(new Date(status.created_at), 'hh:mm a', { locale: es });
+
+    switch (status.type) {
+        case 'entry':
+        case 'break_end':
+            return {
+                greeting,
+                message: `Estás trabajando desde las ${time}`,
+                icon: 'pi pi-check-circle text-green-500',
+                buttons: [
+                    { label: 'Tomar Descanso', action: 'descanso', severity: 'warning', icon: 'pi pi-pause' },
+                    { label: 'Registrar Salida', action: 'fichaje', severity: 'danger', icon: 'pi pi-stop-circle' }
+                ]
+            };
+        case 'break_start':
+            return {
+                greeting,
+                message: `Estás en descanso desde las ${time}`,
+                icon: 'pi pi-coffee text-yellow-500',
+                buttons: [
+                    { label: 'Reanudar Trabajo', action: 'descanso', severity: 'info', icon: 'pi pi-play' },
+                    { label: 'Registrar Salida', action: 'fichaje', severity: 'danger', icon: 'pi pi-stop-circle' }
+                ]
+            };
+        case 'exit':
+            return {
+                greeting,
+                message: `Jornada finalizada a las ${time}.`,
+                icon: 'pi pi-check-square text-gray-500',
+                buttons: [] // No hay acciones disponibles
+            };
+        default:
+            return { greeting, message: 'Estado desconocido.', icon: '', buttons: [] };
+    }
+});
+
 </script>
 
 <template>
@@ -55,17 +152,12 @@ const toggleMenu = (event) => {
 
         <div class="layout-topbar-actions">
             <div class="layout-config-menu">
+                <button type="button" class="layout-topbar-action" @click="toggleAttendancePopover">
+                    <i class="pi pi-clock"></i>
+                </button>
                 <button type="button" class="layout-topbar-action" @click="toggleDarkMode">
                     <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]"></i>
                 </button>
-                <!-- <div class="relative">
-                    <button
-                        v-styleclass="{ selector: '@next', enterFromClass: 'hidden', enterActiveClass: 'animate-scalein', leaveToClass: 'hidden', leaveActiveClass: 'animate-fadeout', hideOnOutsideClick: true }"
-                        type="button" class="layout-topbar-action layout-topbar-action-highlight">
-                        <i class="pi pi-palette"></i>
-                    </button>
-                    <AppConfigurator />
-                </div> -->
             </div>
 
             <button class="layout-topbar-menu-button layout-topbar-action"
@@ -75,14 +167,45 @@ const toggleMenu = (event) => {
 
             <div class="layout-topbar-menu hidden lg:block">
                 <div class="layout-topbar-menu-content">
-                    <button @click="toggleMenu"
+                    <button @click="toggleUserMenu"
                         class="flex text-sm border-2 border-transparent rounded-full focus:outline-none focus:border-gray-300 transition">
-                        <img class="size-9 rounded-full object-cover" :src="user.profile_photo_url"
-                            :alt="user.name">
+                        <img class="size-9 rounded-full object-cover" :src="user.profile_photo_url" :alt="user.name">
                     </button>
-                    <Menu ref="menu" :model="menuItems" :popup="true" />
+                    <Menu ref="menu" :model="userMenuItems" :popup="true" />
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- ✨ --- POPOVER DE FICHAJE --- ✨ -->
+    <Popover ref="attendancePopover">
+        <div class="p-4 w-80">
+            <div class="text-center mb-4">
+                <p class="font-bold text-lg">{{ attendanceStatus.greeting }}</p>
+                <p class="text-sm text-gray-500">Estado actual</p>
+                <div class="flex items-center justify-center gap-2 mt-2">
+                    <p class="font-semibold">{{ attendanceStatus.message }}</p>
+                    <i :class="attendanceStatus.icon"></i>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <Button v-for="button in attendanceStatus.buttons" :key="button.label" :label="button.label"
+                    :icon="button.icon" :severity="button.severity" @click="openAttendanceModal(button.action)"
+                    class="flex-1" />
+            </div>
+        </div>
+    </Popover>
+
+    <!-- ✨ Modal de Fichaje -->
+    <Dialog v-model:visible="attendanceModalVisible" modal header="Registrar Fichaje" :style="{ width: '40rem' }"
+        @hide="closeAttendanceModal">
+        <div class="w-full border-2 border-gray-300 rounded-lg overflow-hidden">
+            <video ref="video" autoplay playsinline class="w-full"></video>
+            <canvas ref="canvas" class="hidden"></canvas>
+        </div>
+        <template #footer>
+            <Button label="Cancelar" severity="secondary" @click="closeAttendanceModal" outlined />
+            <Button label="Registrar" icon="pi pi-check" @click="capture" :loading="form.processing" />
+        </template>
+    </Dialog>
 </template>

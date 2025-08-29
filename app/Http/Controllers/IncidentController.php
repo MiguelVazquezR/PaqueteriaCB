@@ -400,4 +400,39 @@ class IncidentController extends Controller
             'employeesData' => $employeesData,
         ]);
     }
+
+    public function updateBreak(Request $request)
+    {
+        $validated = $request->validate([
+            'date' => 'required|date_format:Y-m-d',
+            'start_id' => 'required|exists:attendances,id',
+            'end_id' => 'required|exists:attendances,id',
+            'start_time' => 'required|date_format:H:i',
+            'end_time' => 'required|date_format:H:i|after:start_time',
+        ]);
+
+        $date = Carbon::parse($validated['date']);
+
+        $breakStart = Attendance::find($validated['start_id']);
+        $breakEnd = Attendance::find($validated['end_id']);
+
+        if ($breakStart && $breakEnd) {
+            $breakStart->update(['created_at' => $date->copy()->setTimeFromTimeString($validated['start_time'])]);
+            $breakEnd->update(['created_at' => $date->copy()->setTimeFromTimeString($validated['end_time'])]);
+        }
+
+        return back()->with('success', 'Descanso actualizado.');
+    }
+
+    public function destroyBreak(Request $request)
+    {
+        $validated = $request->validate([
+            'start_id' => 'required|exists:attendances,id',
+            'end_id' => 'required|exists:attendances,id',
+        ]);
+
+        Attendance::destroy([$validated['start_id'], $validated['end_id']]);
+
+        return back()->with('success', 'Descanso eliminado.');
+    }
 }

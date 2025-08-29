@@ -1,9 +1,8 @@
 <?php
-
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AttendanceController;
+use Illuminate\Support\Facades\Route;
 
-// Usamos resource para tener todas las rutas CRUD básicas.
-// Podrías limitarlas con ->only(['index', 'show', 'store']) si no
-// se permite la edición o borrado directo.
-Route::resource('attendances', AttendanceController::class);
+// Ruta para Entrada / Salida
+Route::post('attendances', [AttendanceController::class, 'store'])->name('attendances.store');
+// Ruta para Inicio / Fin de Descanso
+Route::post('attendances/break', [AttendanceController::class, 'storeBreak'])->name('attendances.storeBreak');

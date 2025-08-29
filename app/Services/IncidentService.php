@@ -46,6 +46,8 @@ class IncidentService
                             'start' => $start->format('h:i a'),
                             'end' => $end->format('h:i a'),
                             'duration' => $duration,
+                            'start_id' => $breakStarts[$i]->id,
+                            'end_id' => $breakEnds[$i]->id,
                         ];
                     }
                 }

@@ -5,7 +5,9 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import { debounce } from 'lodash';
 import { format } from 'date-fns';
 import es from 'date-fns/locale/es';
+import { useConfirm } from 'primevue/useconfirm';
 
+const confirm = useConfirm();
 // --- Props ---
 const props = defineProps({
     period: Object,
@@ -46,6 +48,17 @@ const attendanceForm = useForm({
 // ✨ State para el panel de resumen de descansos
 const op = ref();
 const selectedBreaks = ref([]);
+const breakModalVisible = ref(false);
+const currentDayForBreakEdit = ref(null);
+const currentDayForBreakSummary = ref(null);
+
+const breakForm = useForm({
+    date: null,
+    start_id: null,
+    end_id: null,
+    start_time: null,
+    end_time: null,
+});
 
 const splitButtonItems = ref([
     {
@@ -179,8 +192,9 @@ const saveAttendance = () => {
 };
 
 // método para mostrar el resumen de descansos
-const toggleBreakSummary = (event, breaks) => {
-    selectedBreaks.value = breaks;
+const toggleBreakSummary = (event, day) => {
+    selectedBreaks.value = day.breaks_summary;
+    currentDayForBreakSummary.value = day;
     op.value.toggle(event);
 };
 
@@ -229,6 +243,62 @@ const getIncidentSeverity = (incidentName) => {
     if (success.includes(incidentName)) return 'success';
     if (info.includes(incidentName)) return 'info';
     return 'secondary';
+};
+
+const timeStringToDate = (timeString) => {
+    if (!timeString) return null;
+    const date = new Date();
+    const [time, period] = timeString.split(' ');
+    let [hours, minutes] = time.split(':');
+    hours = parseInt(hours);
+    if (period.toLowerCase() === 'pm' && hours < 12) hours += 12;
+    if (period.toLowerCase() === 'am' && hours === 12) hours = 0;
+    date.setHours(hours, parseInt(minutes), 0);
+    return date;
+};
+
+const openBreakEditModal = (breakItem, date) => {
+    currentDayForBreakEdit.value = date;
+    breakForm.date = date;
+    breakForm.start_id = breakItem.start_id;
+    breakForm.end_id = breakItem.end_id;
+    breakForm.start_time = timeStringToDate(breakItem.start);
+    breakForm.end_time = timeStringToDate(breakItem.end);
+    breakModalVisible.value = true;
+};
+
+const saveBreak = () => {
+    breakForm.transform(data => ({
+        ...data,
+        start_time: data.start_time ? new Date(data.start_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : null,
+        end_time: data.end_time ? new Date(data.end_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : null,
+    })).put(route('incidents.updateBreak'), {
+        preserveScroll: true,
+        onSuccess: () => breakModalVisible.value = false,
+        onError: (err) => console.log(err),
+    });
+};
+
+const confirmDeleteBreak = (breakItem) => {
+    confirm.require({
+        message: '¿Estás seguro de que quieres eliminar este descanso?',
+        header: 'Confirmar eliminación',
+        rejectProps: {
+            label: 'Cancelar',
+            severity: 'secondary',
+            outlined: true
+        },
+        acceptProps: {
+            label: 'Eliminar',
+            severity: 'danger'
+        },
+        accept: () => {
+            router.delete(route('incidents.destroyBreak'), {
+                data: { start_id: breakItem.start_id, end_id: breakItem.end_id },
+                preserveScroll: true,
+            });
+        }
+    });
 };
 
 </script>
@@ -335,7 +405,7 @@ const getIncidentSeverity = (incidentName) => {
                                                 <span>{{ day.break_time }}</span>
                                                 <Button v-if="day.breaks_summary && day.breaks_summary.length"
                                                     icon="pi pi-book" text rounded size="small" class="ml-2"
-                                                    @click="toggleBreakSummary($event, day.breaks_summary)" />
+                                                    @click="toggleBreakSummary($event, day)" />
                                             </div>
                                         </td>
                                         <td class="px-4 py-3">{{ day.extra_time }}</td>
@@ -407,15 +477,21 @@ const getIncidentSeverity = (incidentName) => {
             </Dialog>
 
             <Popover ref="op">
-                <div class="p-2 w-64">
+                <div class="p-2 w-72">
                     <h3 class="font-semibold mb-2 text-gray-800">Resumen de descansos</h3>
                     <div v-if="selectedBreaks.length">
                         <div v-for="(breakItem, index) in selectedBreaks" :key="index"
-                            class="flex justify-between items-center text-sm mb-1 text-gray-600">
+                            class="group flex justify-between items-center text-sm mb-1 text-gray-600">
                             <span>Descanso {{ index + 1 }}: {{ breakItem.start }} - {{ breakItem.end }}</span>
                             <div class="flex items-center">
                                 <i class="pi pi-arrow-right text-xs mx-2"></i>
                                 <span class="font-medium text-gray-800">{{ breakItem.duration }} min</span>
+                                <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button icon="pi pi-pencil" text rounded size="small"
+                                        @click="openBreakEditModal(breakItem, currentDayForBreakSummary.date)" />
+                                    <Button icon="pi pi-trash" text rounded size="small" severity="danger"
+                                        @click="confirmDeleteBreak(breakItem)" />
+                                </div>
                             </div>
                         </div>
                         <Divider layout="horizontal" />
@@ -428,6 +504,25 @@ const getIncidentSeverity = (incidentName) => {
                     </div>
                 </div>
             </Popover>
+
+            <!-- ✨ MODAL PARA EDITAR DESCANSO -->
+            <Dialog v-model:visible="breakModalVisible" modal header="Editar Descanso" :style="{ width: '30rem' }">
+                <p class="mb-4 text-gray-600">Editando descanso del día {{ currentDayForBreakEdit }}.</p>
+                <div class="flex flex-col gap-4">
+                    <div class="flex flex-col gap-2">
+                        <label>Hora de inicio</label>
+                        <DatePicker v-model="breakForm.start_time" timeOnly hourFormat="12" fluid />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label>Hora de fin</label>
+                        <DatePicker v-model="breakForm.end_time" timeOnly hourFormat="12" fluid />
+                    </div>
+                </div>
+                <template #footer>
+                    <Button label="Cancelar" severity="secondary" @click="breakModalVisible = false" outlined />
+                    <Button label="Guardar" @click="saveBreak" :loading="breakForm.processing" />
+                </template>
+            </Dialog>
 
             <Menu ref="menu" :model="selectedDayMenu" :popup="true" />
 

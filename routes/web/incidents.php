@@ -13,6 +13,8 @@ Route::post('/incidents/remove-day-incident', [IncidentController::class, 'remov
 Route::post('/incidents/update-comment', [IncidentController::class, 'updateComment'])->name('incidents.updateComment');
 Route::get('/incidents/{period}/pre-payroll', [IncidentController::class, 'prePayroll'])->name('incidents.prePayroll');
 Route::get('/incidents/{period}/print-attendances', [IncidentController::class, 'printAttendances'])->name('incidents.printAttendances');
+Route::put('/incidents/update-break', [IncidentController::class, 'updateBreak'])->name('incidents.updateBreak');
+Route::delete('/incidents/destroy-break', [IncidentController::class, 'destroyBreak'])->name('incidents.destroyBreak');
 
 // Rutas de resource
 Route::get('/incidents/{period}', [IncidentController::class, 'show'])->name('incidents.show');
