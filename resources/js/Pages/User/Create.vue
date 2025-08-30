@@ -66,7 +66,7 @@ const form = useForm({
     emergency_contact_relationship: '',
 
     // Acceso al sistema
-    create_user_account: false,
+    create_user_account: true,
     email: '',
     password: '',
     role_id: null,
@@ -170,29 +170,29 @@ const getDayFromSchedule = (dayOfWeek) => {
                         <div>
                             <InputLabel for="first_name" value="Nombre(s)*" />
                             <InputText id="first_name" v-model="form.first_name" class="w-full"
-                                :invalid="!!form.errors.first_name" />
+                                :invalid="!!form.errors.first_name" placeholder="Ej. Juan" />
                             <small v-if="form.errors.first_name" class="text-red-500 mt-1">{{ form.errors.first_name
                             }}</small>
                         </div>
                         <div>
                             <InputLabel for="last_name" value="Apellidos*" />
                             <InputText id="last_name" v-model="form.last_name" class="w-full"
-                                :invalid="!!form.errors.last_name" />
+                                :invalid="!!form.errors.last_name" placeholder="Ej. Pérez García" />
                             <small v-if="form.errors.last_name" class="text-red-500 mt-1">{{ form.errors.last_name
                             }}</small>
                         </div>
                         <div>
                             <InputLabel for="phone" value="Teléfono" />
-                            <InputText id="phone" v-model="form.phone" class="w-full" />
+                            <InputText id="phone" v-model="form.phone" class="w-full" placeholder="Ej. 33 49 38 26 08" />
                         </div>
                         <div>
                             <InputLabel for="birth_date" value="Fecha de nacimiento" />
                             <DatePicker id="birth_date" v-model="form.birth_date" dateFormat="dd/mm/yy" showIcon fluid
-                                iconDisplay="input" class="w-full" />
+                                iconDisplay="input" class="w-full" placeholder="dd/mm/aaaa" />
                         </div>
                         <div class="md:col-span-2">
                             <InputLabel for="address" value="Domicilio" />
-                            <InputText id="address" v-model="form.address" class="w-full" />
+                            <InputText id="address" v-model="form.address" class="w-full" placeholder="Ej. Calle Manuel Acuña  #87, Colonia Bugambilias..." />
                         </div>
                     </div>
                     <Divider />
@@ -206,14 +206,14 @@ const getDayFromSchedule = (dayOfWeek) => {
                         <div>
                             <InputLabel for="employee_number" value="N° de empleado*" />
                             <InputText id="employee_number" v-model="form.employee_number" class="w-full"
-                                :invalid="!!form.errors.employee_number" />
+                                :invalid="!!form.errors.employee_number" placeholder="Ej. 294" />
                             <small v-if="form.errors.employee_number" class="text-red-500 mt-1">{{
                                 form.errors.employee_number }}</small>
                         </div>
                         <div>
                             <InputLabel for="hire_date" value="Fecha de contratación*" />
                             <DatePicker id="hire_date" v-model="form.hire_date" dateFormat="dd/mm/yy" showIcon fluid
-                                iconDisplay="input" :invalid="!!form.errors.hire_date" class="w-full" />
+                                iconDisplay="input" :invalid="!!form.errors.hire_date" class="w-full" placeholder="dd/mm/aaaa" />
                             <small v-if="form.errors.hire_date" class="text-red-500 mt-1">{{ form.errors.hire_date
                             }}</small>
                         </div>
@@ -228,37 +228,37 @@ const getDayFromSchedule = (dayOfWeek) => {
                         <div>
                             <InputLabel for="position" value="Puesto*" />
                             <InputText id="position" v-model="form.position" class="w-full"
-                                :invalid="!!form.errors.position" />
+                                :invalid="!!form.errors.position" placeholder="Ej. Gerente" />
                             <small v-if="form.errors.position" class="text-red-500 mt-1">{{ form.errors.position
                             }}</small>
                         </div>
                         <div>
                             <div class="flex items-center gap-2">
                                 <InputLabel for="schedule_id" value="Horario*" />
-                                <i class="pi pi-book cursor-pointer text-gray-400" @click="toggleSchedulePopover"></i>
+                                <i class="pi pi-book cursor-pointer" style="font-size: 12px;" @click="toggleSchedulePopover"></i>
                             </div>
                             <Select id="schedule_id" v-model="form.schedule_id" :options="schedules" optionLabel="name"
-                                optionValue="id" placeholder="Selecciona un horario" class="w-full"
+                                optionValue="id" placeholder="Selecciona un horario" size="large" class="w-full"
                                 :invalid="!!form.errors.schedule_id" />
                             <small v-if="form.errors.schedule_id" class="text-red-500 mt-1">{{ form.errors.schedule_id
                                 }}</small>
                         </div>
                         <div>
                             <InputLabel for="curp" value="CURP" />
-                            <InputText id="curp" v-model="form.curp" class="w-full" />
+                            <InputText id="curp" v-model="form.curp" class="w-full" placeholder="Agrega la CURP" />
                         </div>
                         <div>
                             <InputLabel for="rfc" value="RFC" />
-                            <InputText id="rfc" v-model="form.rfc" class="w-full" />
+                            <InputText id="rfc" v-model="form.rfc" class="w-full" placeholder="Agrega la RFC" />
                         </div>
                         <div>
                             <InputLabel for="nss" value="Número de seguridad social" />
-                            <InputText id="nss" v-model="form.nss" class="w-full" />
+                            <InputText id="nss" v-model="form.nss" class="w-full" placeholder="Agrega es NSS" />
                         </div>
                         <div>
                             <InputLabel for="base_salary" value="Salario base mensual*" />
                             <InputNumber id="base_salary" v-model="form.base_salary" mode="currency" currency="MXN"
-                                locale="es-MX" class="w-full" :invalid="!!form.errors.base_salary" />
+                                locale="es-MX" class="w-full" :invalid="!!form.errors.base_salary" placeholder="Ej. 15,000.00" />
                             <small v-if="form.errors.base_salary" class="text-red-500 mt-1">{{ form.errors.base_salary
                             }}</small>
                         </div>
@@ -274,7 +274,7 @@ const getDayFromSchedule = (dayOfWeek) => {
                             <div>
                                 <InputLabel for="termination_date" value="Fecha de baja*" />
                                 <DatePicker id="termination_date" v-model="form.termination_date" dateFormat="dd/mm/yy"
-                                    showIcon fluid iconDisplay="input" class="w-full"
+                                    showIcon fluid iconDisplay="input" class="w-full" placeholder="dd/mm/aaaa"
                                     :invalid="!!form.errors.termination_date" />
                                 <small v-if="form.errors.termination_date" class="text-red-500 mt-1">{{
                                     form.errors.termination_date }}</small>
@@ -282,7 +282,7 @@ const getDayFromSchedule = (dayOfWeek) => {
                             <div>
                                 <InputLabel for="termination_reason" value="Motivo de baja*" />
                                 <InputText id="termination_reason" v-model="form.termination_reason" class="w-full"
-                                    :invalid="!!form.errors.termination_reason" />
+                                    :invalid="!!form.errors.termination_reason" placeholder="Escribe el motivo de baja" />
                                 <small v-if="form.errors.termination_reason" class="text-red-500 mt-1">{{
                                     form.errors.termination_reason }}</small>
                             </div>
@@ -299,12 +299,12 @@ const getDayFromSchedule = (dayOfWeek) => {
                         <div>
                             <InputLabel for="emergency_contact_name" value="Nombre completo" />
                             <InputText id="emergency_contact_name" v-model="form.emergency_contact_name"
-                                class="w-full" />
+                                class="w-full" placeholder="Ej. María Eugenia Sanchez" />
                         </div>
                         <div>
                             <InputLabel for="emergency_contact_phone" value="Teléfono" />
                             <InputText id="emergency_contact_phone" v-model="form.emergency_contact_phone"
-                                class="w-full" />
+                                class="w-full" placeholder="Ej. 3347738623" />
                         </div>
                         <div>
                             <InputLabel for="emergency_contact_relatioship" value="Parentesco" />
@@ -356,7 +356,7 @@ const getDayFromSchedule = (dayOfWeek) => {
                     <div class="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700">
                         <InputLabel for="create_user_account"
                             value="Habilitar para que este usuario pueda iniciar sesión." />
-                        <ToggleSwitch id="create_user_account" v-model="form.create_user_account" />
+                        <ToggleSwitch id="create_user_account" disabled v-model="form.create_user_account" />
                     </div>
                     <div v-if="form.create_user_account" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                         <div>
@@ -401,8 +401,8 @@ const getDayFromSchedule = (dayOfWeek) => {
     <!-- ✨ Popover para Permisos ✨ -->
     <Popover ref="op">
         <div class="p-2 w-72">
-            <h3 class="font-bold mb-2">Detalles del rol</h3>
-            <p class="font-semibold text-primary-600 mb-2">{{roles.find(r => r.id === form.role_id)?.name}}</p>
+            <h3 class="font-bold mb-2 text-lg">Detalles del rol</h3>
+            <p class="font-semibold text-[#3f3f3f] mb-2">{{roles.find(r => r.id === form.role_id)?.name}}</p>
             <div class="border rounded-md p-2 max-h-48 overflow-y-auto">
                 <p v-if="!selectedRolePermissions.length" class="text-sm text-gray-500">Este rol no tiene permisos
                     asignados.</p>
@@ -420,9 +420,9 @@ const getDayFromSchedule = (dayOfWeek) => {
     <!-- ✨ POPOVER PARA DETALLES DEL HORARIO ✨ -->
     <Popover ref="scheduleOp">
         <div class="p-4 w-96">
-            <h3 class="font-bold text-lg mb-4">Detalles del horario</h3>
+            <h3 class="font-bold text-lg mb-2">Detalles del horario</h3>
             <div v-if="selectedSchedule">
-                <h4 class="font-semibold mb-2">Horario de "{{ selectedSchedule.name }}"</h4>
+                <h4 class="font-semibold text-base mb-2">Horario de "{{ selectedSchedule.name }}"</h4>
                 <table class="w-full text-sm text-left">
                     <thead class="bg-gray-50 text-xs uppercase">
                         <tr>

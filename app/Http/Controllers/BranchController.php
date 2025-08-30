@@ -77,7 +77,6 @@ class BranchController extends Controller
                 'settings' => [
                     'timezone' => $validated['settings']['timezone']
                 ],
-                // 'phone' no está en el fillable por defecto, habría que añadirlo si se guarda en DB
             ]);
 
             // 2. Crear el horario principal para la sucursal

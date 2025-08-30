@@ -69,7 +69,7 @@ const toggleMenu = (event, person) => {
         items.push({ label: 'Ver detalles', icon: 'pi pi-eye', command: () => router.get(route('users.show', person.user_id)) });
         items.push({ label: 'Editar', icon: 'pi pi-pencil', command: () => router.get(route('users.edit', person.user_id)) });
     } else {
-        items.push({ label: 'Editar Empleado', icon: 'pi pi-pencil', disabled: true });
+        items.push({ label: 'Editar Empleado', icon: 'pi pi-pencil', disabled: false });
     }
     items.push({ label: 'Eliminar', icon: 'pi pi-trash', class: 'p-menuitem-text-danger', command: () => console.log('Eliminar', person.id) });
     selectedUserMenu.value = items;
@@ -104,10 +104,11 @@ const toggleMenu = (event, person) => {
                         :sortOrder="filters.sort_direction === 'asc' ? 1 : -1" removableSort>
                         <Column field="avatar_url" header="Imagen">
                             <template #body="slotProps">
-                                <Avatar :image="slotProps.data.avatar_url" shape="circle" size="large" />
+                                <img :src="slotProps.data.avatar_url" :alt="slotProps.data.name"
+                                    class="size-12 rounded-full object-cover" />
                             </template>
                         </Column>
-                        <Column field="employee_number" header="N° empleado" sortable></Column>
+                        <Column field="employee_number" header="N° empleado" class="w-[140px]" sortable></Column>
                         <Column field="name" header="Nombre" sortable></Column>
                         <Column field="position" header="Puesto" sortable></Column>
                         <Column field="branch" header="Sucursal" sortable></Column>

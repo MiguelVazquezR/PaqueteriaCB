@@ -181,9 +181,8 @@ const calculateDayTotalHours = (detail) => {
             <div class="relative">
                 <div class="bg-black dark:bg-gray-800 h-32 md:h-48 shadow-md rounded-3xl overflow-hidden mb-8">
                     <span class="text-white text-6xl absolute bottom-4 right-7 font-bold opacity-40">CB</span>
-                    <Avatar :image="user.profile_photo_url"
-                        class="!size-40 !text-5xl absolute left-9 -bottom-7 border-8 border-[#d9d9d9] dark:border-gray-800"
-                        shape="circle" />
+                    <img :src="user.profile_photo_url" :alt="user.name"
+                        class="size-44 rounded-full object-cover absolute left-9 -bottom-7 border-8 border-[#d9d9d9] dark:border-gray-800" />
                 </div>
             </div>
             <div class="py-4">
@@ -427,12 +426,12 @@ const calculateDayTotalHours = (detail) => {
 
             <!-- POPOVER PARA DETALLES DEL HORARIO -->
             <Popover ref="scheduleOp">
-                <div class="p-4 w-96">
+                <div class="p-4 w-[400px]">
                     <h3 class="font-bold text-lg mb-2">Detalles del horario</h3>
                     <div v-if="employeeSchedule">
                         <!-- ... (Detalles de la sucursal) ... -->
                         <div>
-                            <h4 class="font-semibold mb-2">Horario de "{{ employeeSchedule.name }}"</h4>
+                            <h4 class="font-semibold text-base mb-2">Horario de "{{ employeeSchedule.name }}"</h4>
                             <table class="w-full text-sm text-left">
                                 <thead class="bg-gray-50 text-xs uppercase">
                                     <tr>
@@ -451,7 +450,7 @@ const calculateDayTotalHours = (detail) => {
                                             <td class="px-2 py-1">{{ formatTime(getDayFromSchedule(index +
                                                 1).start_time) }}</td>
                                             <td class="px-2 py-1">{{ formatTime(getDayFromSchedule(index + 1).end_time)
-                                                }}</td>
+                                            }}</td>
                                             <td class="px-2 py-1">{{ getDayFromSchedule(index + 1).meal_minutes }}</td>
                                             <!-- ✨ Cálculo dinámico de horas por día -->
                                             <td class="px-2 py-1 font-semibold">{{

@@ -384,8 +384,8 @@ const getDayFromSchedule = (dayOfWeek) => {
     <!-- ✨ Popover para Permisos ✨ -->
     <Popover ref="op">
         <div class="p-2 w-72">
-            <h3 class="font-bold mb-2">Detalles del rol</h3>
-            <p class="font-semibold text-primary-600 mb-2">{{roles.find(r => r.id === form.role_id)?.name}}</p>
+            <h3 class="font-bold text-lg mb-2">Detalles del rol</h3>
+            <p class="font-semibold text-[#3f3f3f] mb-2">{{roles.find(r => r.id === form.role_id)?.name}}</p>
             <div class="border rounded-md p-2 max-h-48 overflow-y-auto">
                 <p v-if="!selectedRolePermissions.length" class="text-sm text-gray-500">Este rol no tiene permisos
                     asignados.</p>
@@ -403,9 +403,9 @@ const getDayFromSchedule = (dayOfWeek) => {
     <!-- POPOVER PARA DETALLES DEL HORARIO -->
     <Popover ref="scheduleOp">
         <div class="p-4 w-96">
-            <h3 class="font-bold text-lg mb-4">Detalles del horario</h3>
+            <h3 class="font-bold text-lg mb-2">Detalles del horario</h3>
             <div v-if="selectedSchedule">
-                <h4 class="font-semibold mb-2">Horario de "{{ selectedSchedule.name }}"</h4>
+                <h4 class="font-semibold text-base mb-2">Horario de "{{ selectedSchedule.name }}"</h4>
                 <table class="w-full text-sm text-left">
                     <thead class="bg-gray-50 text-xs uppercase">
                         <tr>
