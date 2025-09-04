@@ -15,10 +15,12 @@ class Branch extends Model
         'phone',
         'settings',
         'is_active',
+        'business_hours',
     ];
 
     protected $casts = [
         'settings' => 'array',
+        'business_hours' => 'array',
         'is_active' => 'boolean',
     ];
 

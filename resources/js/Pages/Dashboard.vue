@@ -131,7 +131,7 @@ const formatDate = (dateString) => {
                     </div>
                 </div>
                 <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex items-start gap-4">
-                    <FingerPrintIcon class="size-10 text-black" />
+                    <FingerPrintIcon class="size-10 text-black dark:text-white" />
                     <div>
                         <p class="text-gray-500">Asistencia hoy</p>
                         <p class="text-3xl font-bold">{{ stats.attendance_today.percentage }}%</p>

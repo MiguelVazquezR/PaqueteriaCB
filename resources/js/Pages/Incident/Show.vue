@@ -317,8 +317,8 @@ const confirmDeleteBreak = (breakItem) => {
                     <div class="flex items-center gap-4">
                         <Button icon="pi pi-chevron-left" text rounded :disabled="!navigation.previous_period_id"
                             @click="navigation.previous_period_id && router.get(route('incidents.show', navigation.previous_period_id))" />
-                        <div>
-                            <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Semana {{ period.week_number
+                        <div class="text-center">
+                            <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100 m-0">Semana {{ period.week_number
                                 }}</h1>
                             <p class="text-sm text-gray-500">{{ period.start_date_formatted_short }} - {{
                                 period.end_date_formatted_full }}</p>
@@ -335,7 +335,7 @@ const confirmDeleteBreak = (breakItem) => {
                         </IconField>
                     </div>
                     <div class="flex items-center gap-2 mt-4 md:mt-0">
-                        <SplitButton label="Generar pre-nómina" :model="splitButtonItems"
+                        <SplitButton label="Generar pre-nómina" :model="splitButtonItems" size="large"
                             @click="router.get(route('incidents.prePayroll', period.id))" />
                     </div>
                 </div>
@@ -344,15 +344,15 @@ const confirmDeleteBreak = (breakItem) => {
             <!-- === LISTA DE EMPLEADOS === -->
             <div class="space-y-6">
                 <div v-for="employee in employeesData" :key="employee.id"
-                    class="bg-white dark:bg-gray-800 shadow-md rounded-lg">
+                    class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-3">
                     <!-- Cabecera del empleado -->
-                    <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex justify-between items-end p-4 bg-[#f8f8f8] text-[#3f3f3f] rounded-[9px] dark:bg-gray-700 dark:text-gray-100">
                         <div class="flex items-center gap-3">
                             <Avatar :image="employee.avatar_url" :label="employee.name[0]" shape="circle" size="large"
                                 class="!bg-[#d9d9d9]" />
                             <div>
-                                <h2 class="font-bold text-gray-900 dark:text-gray-100">{{ employee.name }}</h2>
-                                <p class="text-sm text-gray-500">N° {{ employee.employee_number }} • {{
+                                <h2 class="font-bold text-lg m-0">{{ employee.name }}</h2>
+                                <p class="text-sm">N° {{ employee.employee_number }} • {{
                                     employee.position }}</p>
                             </div>
                         </div>
@@ -361,34 +361,34 @@ const confirmDeleteBreak = (breakItem) => {
                     </div>
 
                     <!-- Tabla de días -->
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto mt-2">
                         <table class="w-full text-sm text-left">
                             <thead
                                 class="bg-gray-50 dark:bg-gray-700 text-xs text-gray-700 dark:text-gray-400 uppercase">
                                 <tr>
-                                    <th class="px-4 py-3">Día</th>
-                                    <th class="px-4 py-3">Entrada</th>
-                                    <th class="px-4 py-3">Salida</th>
-                                    <th class="px-4 py-3">T. Descanso</th>
-                                    <th class="px-4 py-3">T. Extra</th>
-                                    <th class="px-4 py-3">Horas totales</th>
-                                    <th class="px-4 py-3"></th>
+                                    <th class="px-2 py-1">Día</th>
+                                    <th class="px-2 py-1">Entrada</th>
+                                    <th class="px-2 py-1">Salida</th>
+                                    <th class="px-2 py-1">T. Descanso</th>
+                                    <th class="px-2 py-1">T. Extra</th>
+                                    <th class="px-2 py-1">Horas totales</th>
+                                    <th class="px-2 py-1"></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr v-for="day in employee.daily_data" :key="day.date"
                                     class="border-b dark:border-gray-700">
-                                    <td class="px-4 py-3 font-medium">{{ day.date_formatted }}</td>
+                                    <td class="px-2 py-1 font-medium">{{ day.date_formatted }}</td>
                                     <!-- Si HAY incidencia -->
                                     <template v-if="day.incident">
-                                        <td colspan="5" class="px-4 py-3">
+                                        <td colspan="5" class="px-2 py-1">
                                             <Tag :value="day.incident" :severity="getIncidentSeverity(day.incident)"
                                                 class="w-full text-center" />
                                         </td>
                                     </template>
                                     <!-- Si NO HAY incidencia -->
                                     <template v-else>
-                                        <td class="px-4 py-3">
+                                        <td class="px-2 py-1">
                                             <span v-if="day.entry_time"
                                                 v-tooltip.top="day.late_minutes && !day.late_ignored ? `${day.late_minutes} minutos de retardo` : null"
                                                 class="flex items-center gap-2"
@@ -399,8 +399,8 @@ const confirmDeleteBreak = (breakItem) => {
                                             </span>
                                             <span v-else>-</span>
                                         </td>
-                                        <td class="px-4 py-3">{{ day.exit_time || '-' }}</td>
-                                        <td class="px-4 py-3">
+                                        <td class="px-2 py-1">{{ day.exit_time || '-' }}</td>
+                                        <td class="px-2 py-1">
                                             <div class="flex items-center">
                                                 <span>{{ day.break_time }}</span>
                                                 <Button v-if="day.breaks_summary && day.breaks_summary.length"
@@ -408,11 +408,11 @@ const confirmDeleteBreak = (breakItem) => {
                                                     @click="toggleBreakSummary($event, day)" />
                                             </div>
                                         </td>
-                                        <td class="px-4 py-3">{{ day.extra_time }}</td>
-                                        <td class="px-4 py-3">{{ day.total_hours }}</td>
+                                        <td class="px-2 py-1">{{ day.extra_time }}</td>
+                                        <td class="px-2 py-1">{{ day.total_hours }}</td>
                                     </template>
                                     <!-- Columna 7: Opciones (Siempre visible) -->
-                                    <td class="px-4 py-3 text-center">
+                                    <td class="px-2 py-1 text-center">
                                         <Button @click="toggleDayMenu($event, day, employee)" icon="pi pi-ellipsis-v"
                                             text rounded />
                                     </td>
@@ -477,15 +477,15 @@ const confirmDeleteBreak = (breakItem) => {
             </Dialog>
 
             <Popover ref="op">
-                <div class="p-2 w-72">
-                    <h3 class="font-semibold mb-2 text-gray-800">Resumen de descansos</h3>
+                <div class="w-[300px]">
+                    <h3 class="font-semibold text-[#3f3f3f] text-base rounded-md bg-[#f8f8f8] px-3 m-0">Resumen de descansos</h3>
                     <div v-if="selectedBreaks.length">
                         <div v-for="(breakItem, index) in selectedBreaks" :key="index"
                             class="group flex justify-between items-center text-sm mb-1 text-gray-600">
-                            <span>Descanso {{ index + 1 }}: {{ breakItem.start }} - {{ breakItem.end }}</span>
-                            <div class="flex items-center">
-                                <i class="pi pi-arrow-right text-xs mx-2"></i>
-                                <span class="font-medium text-gray-800">{{ breakItem.duration }} min</span>
+                            <span><b>Descanso {{ index + 1 }}:</b> {{ breakItem.start }} - {{ breakItem.end }}</span>
+                            <div class="flex items-center w-1/3">
+                                <i class="pi pi-arrow-right !text-xs mx-2"></i>
+                                <span class="font-medium text-[#3f3f3f] flex-shrink-0">{{ breakItem.duration }} min</span>
                                 <div class="opacity-0 group-hover:opacity-100 transition-opacity">
                                     <Button icon="pi pi-pencil" text rounded size="small"
                                         @click="openBreakEditModal(breakItem, currentDayForBreakSummary.date)" />
@@ -495,7 +495,7 @@ const confirmDeleteBreak = (breakItem) => {
                             </div>
                         </div>
                         <Divider layout="horizontal" />
-                        <div class="flex justify-end font-bold text-gray-800">
+                        <div class="flex justify-end font-bold text-[#3f3f3f]">
                             <span>Total: {{ totalSelectedBreakTime }} min</span>
                         </div>
                     </div>

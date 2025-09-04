@@ -32,7 +32,7 @@ const printReport = () => {
     <Head title="Reporte de Bonos" />
     <AppLayout>
         <Breadcrumb :home="home" :model="items" class="!bg-transparent print:hidden" />
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6" id="print-container">
                 <!-- HEADER -->
                 <div class="flex justify-between items-start pb-4 border-b">
@@ -53,7 +53,7 @@ const printReport = () => {
                 <!-- TABLAS POR SUCURSAL -->
                 <div v-for="(employees, branchName) in reportData" :key="branchName" class="mt-8">
                     <div class="bg-gray-100 p-3 rounded-t-lg">
-                        <h2 class="font-bold flex items-center gap-2"><i class="pi pi-building"></i><span>Sucursal {{ branchName }}</span></h2>
+                        <h2 class="font-bold flex items-center gap-2 text-lg"><i class="pi pi-building"></i><span>Sucursal {{ branchName }}</span></h2>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm text-left">
