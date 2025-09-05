@@ -48,7 +48,7 @@ class HolidayController extends Controller
             $holiday->branches()->sync($validated['branch_ids']);
         }
 
-        return back();
+        return back()->with('success', 'Dia festivo registrado.');
     }
 
     public function update(Request $request, HolidayRule $holiday)
@@ -75,12 +75,12 @@ class HolidayController extends Controller
             $holiday->branches()->sync($validated['branch_ids']);
         }
 
-        return back();
+        return back()->with('success', 'Dia festivo actualizado.');
     }
 
     public function destroy(HolidayRule $holiday)
     {
         $holiday->delete();
-        return back();
+        return back()->with('success', 'Dia festivo eliminado.');
     }
 }

@@ -45,7 +45,7 @@ const submit = () => {
                     <!-- === INFORMACIÓN DEL ROL === -->
                     <div class="mb-6">
                         <InputLabel for="name" value="Nombre del rol*" />
-                        <InputText id="name" v-model="form.name" class="w-full md:w-1/2" :invalid="!!form.errors.name" />
+                        <InputText id="name" v-model="form.name" class="w-full md:w-1/2" :invalid="!!form.errors.name" placeholder="Ej. Repartidor" />
                         <small v-if="form.errors.name" class="text-red-500 mt-1">{{ form.errors.name }}</small>
                     </div>
                     <Divider />
@@ -63,7 +63,7 @@ const submit = () => {
                                 <span>{{ groupName }}</span>
                             </h3>
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2 mt-4">
-                                <div v-for="permission in permissionGroup" :key="permission.id" class="flex items-center">
+                                <div v-for="permission in permissionGroup" :key="permission.id" class="flex items-start">
                                     <Checkbox v-model="form.permissions" :inputId="`perm-${permission.id}`" :value="permission.name" />
                                     <label :for="`perm-${permission.id}`" class="ml-2 text-sm text-gray-600 dark:text-gray-400 capitalize">{{ permission.name.replace(/_/g, ' ') }}</label>
                                 </div>

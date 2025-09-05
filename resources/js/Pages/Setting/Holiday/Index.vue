@@ -3,7 +3,6 @@ import { ref, computed, watch } from 'vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { useConfirm } from "primevue/useconfirm";
-import { useToast } from "primevue/usetoast";
 import { debounce } from 'lodash';
 import InputLabel from '@/Components/InputLabel.vue';
 
@@ -17,7 +16,6 @@ const props = defineProps({
 
 // --- Refs and State ---
 const confirm = useConfirm();
-const toast = useToast();
 const home = ref({ icon: 'pi pi-home', url: route('dashboard') });
 const items = ref([
     { label: 'Configuraciones' },
@@ -103,7 +101,10 @@ const submit = () => {
         });
     } else {
         form.post(route('settings.holidays.store'), {
-            onSuccess: () => modalVisible.value = false,
+            onSuccess: () => {
+                modalVisible.value = false,
+                form.reset();
+            }
         });
     }
 };
@@ -125,9 +126,6 @@ const confirmDelete = (holiday) => {
         accept: () => {
             router.delete(route('settings.holidays.destroy', holiday.id), {
                 preserveScroll: true,
-                // onSuccess: () => {
-                //     toast.add({ severity: 'success', summary: 'Confirmado', detail: 'Día eliminado', life: 3000 });
-                // }
             });
         }
     });
@@ -231,6 +229,7 @@ const formatAppliedTo = (holiday) => {
                 <div>
                     <InputLabel value="Nombre del día festivo*" />
                     <InputText v-model="form.name" class="w-full" />
+                    <small class="text-red-500">{{ form.errors.name }}</small>
                 </div>
                 <div class="flex items-center">
                     <Checkbox v-model="form.is_custom" inputId="is_custom" :binary="true" />

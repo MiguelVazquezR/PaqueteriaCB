@@ -44,6 +44,13 @@ const permissionCategories = computed(() => {
     return Object.keys(props.permissions);
 });
 
+const totalPermissions = computed(() => {
+    // Object.values() convierte el objeto de permisos en un array de arrays.
+    // ej: [ [perm1, perm2], [perm3, perm4], ... ]
+    // Luego, 'reduce' suma la longitud de cada array interno para obtener el total.
+    return Object.values(props.permissions).reduce((total, group) => total + group.length, 0);
+});
+
 // --- Methods ---
 const openPermissionsDrawer = (role) => {
     selectedRole.value = role;
@@ -176,47 +183,49 @@ const hasPermission = (permission) => {
                             <i class="pi pi-users text-primary-600 dark:text-primary-300 text-2xl"></i>
                         </div>
                         <div>
-                            <h2 class="font-semibold text-lg text-gray-800 dark:text-gray-200">{{ role.name }}</h2>
+                            <h2 class="font-semibold text-lg text-gray-800 dark:text-gray-200 m-0">{{ role.name }}</h2>
                             <button @click="openPermissionsDrawer(role)"
-                                class="text-sm text-primary-600 hover:underline flex items-center gap-1">
+                                class="text-sm text-primary-600 flex items-center gap-1">
                                 <span>Ver permisos</span>
-                                <i class="pi pi-arrow-right text-xs"></i>
+                                <i class="pi pi-arrow-right !text-xs"></i>
                             </button>
                         </div>
                     </div>
-                    <span class="text-sm text-gray-500">{{ role.permissions_count }} permisos</span>
+                    <span class="text-sm bg-[#f8f8f8] px-2 py-1 rounded-full text-[#3f3f3f]">{{ role.permissions_count
+                    }} permisos</span>
                 </div>
             </div>
 
             <!-- === DRAWER DE PERMISOS === -->
             <Drawer v-model:visible="drawerVisible" position="right" class="!w-full md:!w-96 lg:!w-[30rem]">
                 <template #header>
-                    <div class="w-full flex justify-between items-center">
-                        <div>
-                            <h2 class="text-lg font-bold">Permisos para: {{ selectedRole?.name }}</h2>
-                            <p class="text-sm text-gray-500">Este rol tiene {{ selectedRole?.permissions_count }} de {{
-                                permissions.length }} permisos</p>
+                    <div class="w-full">
+                        <h2 class="text-lg font-bold">Permisos para: {{ selectedRole?.name }}</h2>
+                        <div class="w-full flex justify-between items-center">
+                            <p class="text-sm text-gray-500 m-0">Este rol tiene {{ selectedRole?.permissions_count }} de
+                                {{ totalPermissions }} permisos</p>
+                            <Button @click="confirmDeleteRole(selectedRole)" size="small"
+                                v-if="hasPermission('gestionar_roles_permisos')" label="Eliminar rol" icon="pi pi-trash"
+                                variant="outlined" />
                         </div>
-                        <Button icon="pi pi-trash" severity="danger" text rounded aria-label="Eliminar rol"
-                            @click="confirmDeleteRole(selectedRole)"
-                            v-if="hasPermission('gestionar_roles_permisos')" />
                     </div>
                 </template>
 
-                <div class="space-y-6">
-                    <div v-for="(permissionGroup, groupName) in permissions" :key="groupName">
+                <div class="space-y-3">
+                    <div v-for="(permissionGroup, groupName) in permissions" :key="groupName"
+                        class="border rounded-xl border-[#d9d9d9] p-2">
                         <h3
-                            class="font-semibold text-gray-700 dark:text-gray-300 capitalize mb-2 flex items-center gap-2 text-base">
+                            class="font-semibold text-[#3f3f3f] bg-[#f8f8f8] rounded-lg px-2 py-1 dark:text-gray-300 capitalize flex items-center gap-2 text-base">
                             <i class="pi pi-folder"></i>
                             <span>{{ groupName }}</span>
                         </h3>
                         <div v-for="permission in permissionGroup" :key="permission.id"
-                            class="flex items-center justify-between p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
+                            class="flex items-center justify-between pb-1 border-b border-dashed border-[#d9d9d9] rounded-md">
                             <div class="flex items-center">
                                 <Checkbox v-model="permissionsForm.permissions" :inputId="`perm-${permission.id}`"
                                     :value="permission.name" />
                                 <label :for="`perm-${permission.id}`"
-                                    class="ml-2 text-sm text-gray-600 dark:text-gray-400 capitalize">
+                                    class="ml-2 text-sm text-[#3f3f3f] dark:text-gray-400 capitalize">
                                     {{ permission.name.replace(/_/g, ' ') }}
                                 </label>
                             </div>
