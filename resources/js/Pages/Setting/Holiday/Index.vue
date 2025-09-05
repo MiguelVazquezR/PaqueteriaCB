@@ -18,7 +18,6 @@ const props = defineProps({
 const confirm = useConfirm();
 const home = ref({ icon: 'pi pi-home', url: route('dashboard') });
 const items = ref([
-    { label: 'Configuraciones' },
     { label: 'Días festivos' }
 ]);
 const modalVisible = ref(false);

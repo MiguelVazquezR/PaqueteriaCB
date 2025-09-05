@@ -28,8 +28,9 @@ class ScheduleController extends Controller
 
     public function create()
     {
-        // Cargar sucursales con sus horarios para la guía
-        $branches = Branch::with(['schedules.details'])->get();
+        // incluyendo la columna JSON 'business_hours' para la guía.
+        $branches = Branch::select('id', 'name', 'business_hours')->get();
+
         return Inertia::render('Setting/Schedule/Create', [
             'branches' => $branches
         ]);
@@ -59,7 +60,8 @@ class ScheduleController extends Controller
     public function edit(Schedule $schedule)
     {
         $schedule->load(['details', 'branches:id']);
-        $branches = Branch::with(['schedules.details'])->get();
+
+        $branches = Branch::select('id', 'name', 'business_hours')->get();
 
         return Inertia::render('Setting/Schedule/Edit', [
             'schedule' => $schedule,

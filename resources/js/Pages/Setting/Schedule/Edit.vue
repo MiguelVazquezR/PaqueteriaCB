@@ -3,14 +3,15 @@ import { ref, computed } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
+import { PrimeIcons } from '@primevue/core/api';
 import { useToast } from "primevue/usetoast";
+import { format } from 'date-fns'; // Se importa format
 
 const props = defineProps({ schedule: Object, branches: Array, errors: Object });
 const home = ref({ icon: 'pi pi-home', url: route('dashboard') });
-const items = ref([{ label: 'Configuraciones' }, { label: 'Horarios', url: route('settings.schedules.index') }, { label: 'Editar horario' }]);
+const items = ref([{ label: 'Horarios', url: route('settings.schedules.index'), icon: PrimeIcons.CLOCK }, { label: 'Editar horario' }]);
 const Toast = useToast();
 
-// guía de horarios de sucursales
 const selectedBranchesSchedules = computed(() => {
     return props.branches.filter(branch => form.branch_ids.includes(branch.id));
 });
@@ -18,14 +19,13 @@ const selectedBranchesSchedules = computed(() => {
 const totalHours = computed(() => {
     return form.details.reduce((total, day) => {
         if (day.is_active && day.start_time && day.end_time) {
-            const diff = (day.end_time - day.start_time) / (1000 * 60 * 60); // diferencia en horas
+            const diff = (day.end_time - day.start_time) / (1000 * 60 * 60);
             return total + (diff - (day.meal_minutes / 60));
         }
         return total;
     }, 0);
 });
 
-// Función para convertir 'HH:mm:ss' a un objeto Date que DatePicker entiende
 const timeStringToDate = (timeString) => {
     if (!timeString) return null;
     const [hours, minutes] = timeString.split(':');
@@ -54,11 +54,11 @@ const form = useForm({
     })
 });
 
-const formatBranchSchedule = (schedule) => {
-    if (!schedule || !schedule.details.length) return 'No definido';
-    // Esta es una simplificación, se podría hacer más robusta
-    const weekday = schedule.details.find(d => d.day_of_week === 1);
-    return weekday ? `Lunes a Viernes: ${weekday.start_time} - ${weekday.end_time}` : 'No definido';
+// --- CAMBIO: --- Se añade la función para formatear la hora de forma legible.
+const formatTime = (timeString) => {
+    if (!timeString) return 'Cerrado';
+    const date = timeStringToDate(timeString);
+    return format(date, 'hh:mm a');
 };
 
 const submit = () => {
@@ -66,16 +66,14 @@ const submit = () => {
         ...data,
         details: data.details.map(day => ({
             ...day,
-            start_time: day.start_time ? new Date(day.start_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : null,
-            end_time: day.end_time ? new Date(day.end_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : null,
+            start_time: day.is_active && day.start_time ? format(new Date(day.start_time), 'HH:mm') : null,
+            end_time: day.is_active && day.end_time ? format(new Date(day.end_time), 'HH:mm') : null,
+            meal_minutes: day.is_active ? day.meal_minutes : 0,
         }))
     })).put(route('settings.schedules.update', props.schedule.id), {
         onSuccess: () => {
             Toast.add({ severity: 'success', summary: 'Éxito', detail: 'Horario actualizado.', life: 3000 });
         },
-        onError: (err) => {
-            console.log(err)
-        }
     });
 };
 </script>
@@ -88,14 +86,15 @@ const submit = () => {
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <form @submit.prevent="submit">
                 <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
-                    <h1 class="text-2xl font-bold mb-6">Editar horario</h1>
+                    <h1 class="text-xl font-bold mb-6">Editar horario</h1>
                     <div>
-                        <InputLabel value="Nombre del horario" />
-                        <InputText v-model="form.name" class="w-full md:w-1/2" />
+                        <InputLabel value="Nombre del horario*" />
+                        <InputText v-model="form.name" class="w-full md:w-1/2" :invalid="!!form.errors.name" placeholder="Ej. Turno nocturno" />
+                        <small v-if="form.errors.name" class="text-red-500 mt-1">{{ form.errors.name }}</small>
                     </div>
                     <Divider />
                     <div>
-                        <h2 class="font-semibold mb-2">Sucursales vinculadas</h2>
+                        <h2 class="font-semibold mb-2 text-lg">Sucursales vinculadas</h2>
                         <div class="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 border rounded-lg">
                             <div v-for="branch in branches" :key="branch.id" class="flex items-center">
                                 <Checkbox v-model="form.branch_ids" :value="branch.id"
@@ -105,21 +104,30 @@ const submit = () => {
                         </div>
                     </div>
 
-                    <!-- Guía de horarios de atención de sucursales -->
+                    <!-- --- CAMBIO: --- Guía de horarios de atención rediseñada para leer de 'business_hours'. -->
                     <div v-if="selectedBranchesSchedules.length"
                         class="mt-6 p-4 border rounded-lg bg-gray-50 dark:bg-gray-700/50">
-                        <h3 class="font-semibold mb-2 text-gray-700 dark:text-gray-300">Guía de horario de atención de
-                            las sucursales</h3>
-                        <div v-for="(branch, index) in selectedBranchesSchedules" :key="branch.id">
-                            <p class="text-sm"><span class="font-medium">{{ branch.name }}:</span> {{
-                                formatBranchSchedule(branch.schedules[0]) }}</p>
-                            <Divider v-if="index < selectedBranchesSchedules.length - 1" class="my-2" />
+                        <h3 class="font-semibold mb-3 text-gray-700 dark:text-gray-300 text-lg">Guía de horario de atención</h3>
+                        <div class="space-y-3">
+                            <div v-for="(branch, index) in selectedBranchesSchedules" :key="branch.id">
+                                <p class="font-medium text-sm">{{ branch.name }}</p>
+                                <div class="text-xs text-gray-600 dark:text-gray-400 space-y-1 pl-2">
+                                    <div v-for="day in branch.business_hours" :key="day.day_name"
+                                        class="flex justify-between">
+                                        <span>{{ day.day_name }}:</span>
+                                        <span v-if="day.is_active">{{ formatTime(day.start_time) }} - {{
+                                            formatTime(day.end_time) }}</span>
+                                        <span v-else>Cerrado</span>
+                                    </div>
+                                </div>
+                                <Divider v-if="index < selectedBranchesSchedules.length - 1" class="my-2" />
+                            </div>
                         </div>
                     </div>
 
                     <Divider />
                     <div>
-                        <h2 class="font-semibold mb-2">Horario para {{ form.name }}</h2>
+                        <h2 class="font-semibold mb-2 text-lg">Esquema para {{ form.name }}</h2>
                         <div class="border rounded-lg p-4 space-y-4">
                             <div class="grid grid-cols-6 gap-3 font-semibold text-sm">
                                 <span>Día</span><span>Entrada</span><span>Salida</span><span>Comida

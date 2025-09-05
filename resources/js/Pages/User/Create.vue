@@ -353,11 +353,11 @@ const getDayFromSchedule = (dayOfWeek) => {
                         <i class="pi pi-key text-gray-600 dark:text-gray-400 mt-3"></i>
                         <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Acceso al sistema</h2>
                     </div>
-                    <div class="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700">
+                    <!-- <div class="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700">
                         <InputLabel for="create_user_account"
                             value="Habilitar para que este usuario pueda iniciar sesión." />
                         <ToggleSwitch id="create_user_account" disabled v-model="form.create_user_account" />
-                    </div>
+                    </div> -->
                     <div v-if="form.create_user_account" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                         <div>
                             <InputLabel for="email" value="Correo electrónico*" />

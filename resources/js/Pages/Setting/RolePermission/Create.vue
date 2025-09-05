@@ -14,8 +14,7 @@ const props = defineProps({
 // --- Refs and State ---
 const home = ref({ icon: 'pi pi-home', url: route('dashboard') });
 const items = ref([
-    { label: 'Configuraciones' },
-    { label: 'Roles y permisos', url: route('settings.roles-permissions.index') },
+    { label: 'Roles y permisos', url: route('settings.roles-permissions.index'), icon: PrimeIcons.KEY },
     { label: 'Crear rol' }
 ]);
 

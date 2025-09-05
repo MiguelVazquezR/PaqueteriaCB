@@ -5,6 +5,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import { format } from 'date-fns';
 import es from 'date-fns/locale/es';
 import { useConfirm } from "primevue/useconfirm";
+import { PrimeIcons } from '@primevue/core/api';
 
 const props = defineProps({
     report: Object,
@@ -19,7 +20,7 @@ const pageTitle = computed(() => {
 
 const home = ref({ icon: 'pi pi-home', url: route('dashboard') });
 const items = ref([
-    { label: 'Bonos', url: route('bonuses.index') },
+    { label: 'Bonos', url: route('bonuses.index'), icon: PrimeIcons.WALLET },
     { label: `Detalles - ${format(new Date(props.report.period), 'MMMM yyyy', { locale: es })}` }
 ]);
 

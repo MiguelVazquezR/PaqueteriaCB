@@ -4,6 +4,7 @@ import { Head } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { format } from 'date-fns';
 import es from 'date-fns/locale/es';
+import { PrimeIcons } from '@primevue/core/api';
 
 const props = defineProps({
     period: Object,
@@ -12,7 +13,7 @@ const props = defineProps({
 
 const home = ref({ icon: 'pi pi-home', url: route('dashboard') });
 const items = ref([
-    { label: 'Incidencias', url: route('incidents.index') },
+    { label: 'Incidencias', url: route('incidents.index'), icon: PrimeIcons.CALENDAR_TIMES },
     { label: `Semana ${props.period.week_number}`, url: route('incidents.show', props.period.id) },
     { label: 'Imprimir incidencias' }
 ]);

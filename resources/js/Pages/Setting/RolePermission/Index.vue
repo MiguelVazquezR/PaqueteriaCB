@@ -19,7 +19,6 @@ const confirm = useConfirm();
 const toast = useToast();
 const home = ref({ icon: 'pi pi-home', url: route('dashboard') });
 const items = ref([
-    { label: 'Configuraciones' },
     { label: 'Roles y permisos' }
 ]);
 const drawerVisible = ref(false);

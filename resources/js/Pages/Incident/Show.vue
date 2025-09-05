@@ -6,6 +6,7 @@ import { debounce } from 'lodash';
 import { format } from 'date-fns';
 import es from 'date-fns/locale/es';
 import { useConfirm } from 'primevue/useconfirm';
+import { PrimeIcons } from '@primevue/core/api';
 
 const confirm = useConfirm();
 // --- Props ---
@@ -21,7 +22,7 @@ const props = defineProps({
 // --- Refs and State ---
 const home = ref({ icon: 'pi pi-home', url: route('dashboard') });
 const items = ref([
-    { label: 'Incidencias', url: route('incidents.index') },
+    { label: 'Incidencias', url: route('incidents.index'), icon: PrimeIcons.CALENDAR_TIMES },
     { label: `Semana ${props.period.week_number}` }
 ]);
 const search = ref(props.filters.search);
