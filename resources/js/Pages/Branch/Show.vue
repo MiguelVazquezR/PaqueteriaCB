@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { PrimeIcons } from '@primevue/core/api';
 import { format } from 'date-fns';
@@ -43,6 +43,10 @@ const businessHours = computed(() => {
     // Convertimos el objeto a un array para poder iterarlo fácilmente en el template.
     return Object.values(props.branch.business_hours);
 });
+
+const hasPermission = (permission) => {
+    return usePage().props.auth.permissions?.includes(permission) ?? false;
+};
 </script>
 
 <template>
@@ -58,7 +62,7 @@ const businessHours = computed(() => {
                     <p class="text-black dark:text-gray-400">{{ branch.address }}</p>
                     <p class="text-[#3f3f3f] dark:text-gray-400">{{ branch.phone || '-' }}</p>
                 </div>
-                <Link :href="route('branches.edit', branch.id)" class="mt-4 sm:mt-0">
+                <Link v-if="hasPermission('editar_sucursales')" :href="route('branches.edit', branch.id)" class="mt-4 sm:mt-0">
                     <Button label="Editar" icon="pi pi-pencil" outlined />
                 </Link>
             </div>
@@ -66,7 +70,7 @@ const businessHours = computed(() => {
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Columna Izquierda -->
                 <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-2">
-                    <div class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
+                    <div class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-gray-900 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
                         <i class="pi pi-building"></i>
                         <span>Información general</span>
                     </div>
@@ -89,7 +93,7 @@ const businessHours = computed(() => {
                 <!-- Columna Derecha -->
                 <div class="space-y-6">
                     <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-2">
-                        <div class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
+                        <div class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-gray-900 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
                             <i class="pi pi-sliders-h"></i>
                             <span>Configuración general</span>
                         </div>
@@ -98,7 +102,7 @@ const businessHours = computed(() => {
 
                     <!-- --- CAMBIO: --- La tarjeta de horario ahora lee de 'businessHours' y es más simple. -->
                     <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-2">
-                        <div class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
+                        <div class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-gray-900 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
                             <i class="pi pi-calendar"></i>
                             <span>Horario de operación</span>
                         </div>

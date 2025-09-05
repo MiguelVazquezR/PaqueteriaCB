@@ -6,7 +6,6 @@ import InputLabel from '@/Components/InputLabel.vue';
 import CruzIcon from '@/Components/Icons/CruzIcon.vue';
 import FacialIcon from '@/Components/Icons/FacialIcon.vue';
 import { PrimeIcons } from '@primevue/core/api';
-import { useToast } from 'primevue';
 import { format } from 'date-fns';
 
 // --- Props ---
@@ -19,7 +18,6 @@ const props = defineProps({
 });
 
 // --- Refs and State ---
-const toast = useToast();
 const home = ref({ icon: 'pi pi-home', url: route('dashboard') });
 const items = ref([
     { label: 'Usuarios', url: route('users.index'), icon: PrimeIcons.USER },

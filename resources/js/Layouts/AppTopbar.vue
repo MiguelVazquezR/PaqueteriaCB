@@ -19,6 +19,8 @@ const userMenuItems = ref([
 ]);
 const toggleUserMenu = (event) => { userMenu.value.toggle(event); };
 
+const mobileUserMenuVisible = ref(false);
+
 const attendancePopover = ref();
 const attendanceModalVisible = ref(false);
 const video = ref(null);
@@ -160,9 +162,8 @@ const attendanceStatus = computed(() => {
                 </button>
             </div>
 
-            <button class="layout-topbar-menu-button layout-topbar-action"
-                v-styleclass="{ selector: '@next', enterFromClass: 'hidden', enterActiveClass: 'animate-scalein', leaveToClass: 'hidden', leaveActiveClass: 'animate-fadeout', hideOnOutsideClick: true }">
-                <i class="pi pi-ellipsis-v"></i>
+            <button type="button" class="layout-topbar-action lg:!hidden" @click="mobileUserMenuVisible = true">
+                <i class="pi pi-user text-xl"></i>
             </button>
 
             <div class="layout-topbar-menu hidden lg:block">
@@ -208,4 +209,25 @@ const attendanceStatus = computed(() => {
             <Button label="Registrar" icon="pi pi-check" @click="capture" :loading="form.processing" />
         </template>
     </Dialog>
+
+    <!-- --- CAMBIO: --- Nuevo menú lateral (Sidebar) para la vista móvil. -->
+    <Drawer v-model:visible="mobileUserMenuVisible" position="right" class="w-full sm:w-80">
+        <div class="p-4">
+            <div class="flex flex-col items-center">
+                <img class="size-24 rounded-full object-cover mb-4" :src="user.profile_photo_url" :alt="user.name">
+                <h2 class="text-xl font-bold text-gray-800 dark:text-gray-100">{{ user.name }}</h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{ user.email }}</p>
+            </div>
+            <Divider />
+            <ul class="flex flex-col gap-2">
+                <li v-for="item in userMenuItems" :key="item.label">
+                    <button @click="item.command(); mobileUserMenuVisible = false;"
+                        class="w-full flex items-center p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left">
+                        <i :class="item.icon" class="text-xl mr-3 text-gray-500 dark:text-gray-400"></i>
+                        <span class="font-medium text-gray-800 dark:text-gray-200">{{ item.label }}</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </Drawer>
 </template>

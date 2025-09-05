@@ -133,8 +133,15 @@ const confirmDeleteRole = (role) => {
         header: 'Confirmar Eliminación de Rol',
         icon: 'pi pi-exclamation-triangle',
         acceptLabel: 'Sí, eliminar',
-        rejectLabel: 'Cancelar',
-        acceptClass: 'p-button-danger',
+        rejectProps: {
+            label: 'Cancelar',
+            severity: 'secondary',
+            outlined: true
+        },
+        acceptProps: {
+            label: 'Eliminar',
+            severity: 'danger'
+        },
         accept: () => {
             router.delete(route('settings.roles-permissions.destroy', role.id), {
                 preserveScroll: true,
@@ -191,7 +198,7 @@ const hasPermission = (permission) => {
                         </div>
                     </div>
                     <span class="text-sm bg-[#f8f8f8] px-2 py-1 rounded-full text-[#3f3f3f]">{{ role.permissions_count
-                    }} permisos</span>
+                        }} permisos</span>
                 </div>
             </div>
 
@@ -214,7 +221,7 @@ const hasPermission = (permission) => {
                     <div v-for="(permissionGroup, groupName) in permissions" :key="groupName"
                         class="border rounded-xl border-[#d9d9d9] p-2">
                         <h3
-                            class="font-semibold text-[#3f3f3f] bg-[#f8f8f8] rounded-lg px-2 py-1 dark:text-gray-300 capitalize flex items-center gap-2 text-base">
+                            class="font-semibold text-[#3f3f3f] bg-[#f8f8f8] dark:bg-gray-900 rounded-lg px-2 py-1 dark:text-gray-300 capitalize flex items-center gap-2 text-base">
                             <i class="pi pi-folder"></i>
                             <span>{{ groupName }}</span>
                         </h3>
@@ -269,7 +276,7 @@ const hasPermission = (permission) => {
                                 placeholder="Ej: ver, crear, eliminar" :invalid="!!newPermissionForm.errors.action" />
                             <small v-if="newPermissionForm.errors.action" class="text-red-500">{{
                                 newPermissionForm.errors.action
-                            }}</small>
+                                }}</small>
                         </div>
                         <div class="flex flex-col gap-2">
                             <InputLabel for="category" value="Categoría del permiso*" />
@@ -299,11 +306,11 @@ const hasPermission = (permission) => {
                                 :invalid="!!editPermissionForm.errors.action" />
                             <small v-if="editPermissionForm.errors.action" class="text-red-500">{{
                                 editPermissionForm.errors.action
-                                }}</small>
+                            }}</small>
                         </div>
                         <div class="flex flex-col gap-2">
                             <InputLabel for="edit-category" value="Categoría del permiso*" />
-                            <Dropdown id="edit-category" v-model="editPermissionForm.category"
+                            <Select id="edit-category" v-model="editPermissionForm.category"
                                 :options="permissionCategories" editable class="w-full"
                                 :invalid="!!editPermissionForm.errors.category" />
                             <small v-if="editPermissionForm.errors.category" class="text-red-500">{{

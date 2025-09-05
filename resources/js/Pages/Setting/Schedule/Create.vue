@@ -83,7 +83,8 @@ const submit = () => {
                     <h1 class="text-xl font-bold mb-6">Crear nuevo horario</h1>
                     <div>
                         <InputLabel value="Nombre del horario*" />
-                        <InputText v-model="form.name" class="w-full md:w-1/2" :invalid="!!form.errors.name" placeholder="Ej. Turno matutino" />
+                        <InputText v-model="form.name" class="w-full md:w-1/2" :invalid="!!form.errors.name"
+                            placeholder="Ej. Turno matutino" />
                         <small v-if="form.errors.name" class="text-red-500 mt-1">{{ form.errors.name }}</small>
                     </div>
                     <Divider />
@@ -100,12 +101,15 @@ const submit = () => {
 
                     <!-- --- CAMBIO: --- Guía de horarios de atención rediseñada para leer de 'business_hours'. -->
                     <div v-if="selectedBranchesSchedules.length"
-                        class="mt-6 p-4 border rounded-lg bg-gray-50 dark:bg-gray-700/50">
-                        <h3 class="font-semibold mb-3 text-gray-700 dark:text-gray-300 text-base">Guía de horario de atención</h3>
-                        <div class="space-y-3">
+                        class="mt-6 p-4 border rounded-lg">
+                        <h3
+                            class="font-semibold mb-3 bg-[#f8f8f8] dark:bg-gray-900 text-[#3f3f3f] dark:text-gray-300 text-lg rounded-md px-2">
+                            Guía de horario de atención
+                        </h3>
+                        <div class="space-y-2">
                             <div v-for="(branch, index) in selectedBranchesSchedules" :key="branch.id">
-                                <p class="font-medium text-sm">{{ branch.name }}</p>
-                                <div class="text-xs text-gray-600 dark:text-gray-400 space-y-1 pl-2">
+                                <p class="font-semibold text-sm m-0 mx-1">{{ branch.name }}</p>
+                                <div class="text-xs text-gray-600 dark:text-gray-400 space-y-1 pl-2 mt-1">
                                     <div v-for="day in branch.business_hours" :key="day.day_name"
                                         class="flex justify-between">
                                         <span>{{ day.day_name }}:</span>

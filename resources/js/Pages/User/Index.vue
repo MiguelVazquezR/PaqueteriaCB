@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue'; // Usando AppLayout
 import { debounce } from 'lodash';
 
@@ -55,6 +55,10 @@ const onPage = (event) => {
     });
 };
 
+const hasPermission = (permission) => {
+    return usePage().props.auth.permissions?.includes(permission) ?? false;
+};
+
 const getStatusSeverity = (status) => {
     return status ? 'success' : 'danger';
 };
@@ -67,11 +71,15 @@ const toggleMenu = (event, person) => {
     const items = [];
     if (person.user_id) {
         items.push({ label: 'Ver detalles', icon: 'pi pi-eye', command: () => router.get(route('users.show', person.user_id)) });
-        items.push({ label: 'Editar', icon: 'pi pi-pencil', command: () => router.get(route('users.edit', person.user_id)) });
-    } else {
-        items.push({ label: 'Editar Empleado', icon: 'pi pi-pencil', disabled: false });
-    }
-    items.push({ label: 'Eliminar', icon: 'pi pi-trash', class: 'p-menuitem-text-danger', command: () => console.log('Eliminar', person.id) });
+        
+        if (hasPermission('editar_usuarios')) {
+            items.push({ label: 'Editar', icon: 'pi pi-pencil', command: () => router.get(route('users.edit', person.user_id)) });
+        }
+    } 
+    // else {
+    //     items.push({ label: 'Editar Empleado', icon: 'pi pi-pencil', disabled: false });
+    // }
+    // items.push({ label: 'Eliminar', icon: 'pi pi-trash', class: 'p-menuitem-text-danger', command: () => confirmDeletePerson(person) });
     selectedUserMenu.value = items;
     menu.value.toggle(event);
 };
@@ -87,7 +95,7 @@ const toggleMenu = (event, person) => {
             <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg">
                 <div class="flex justify-end items-center p-6 pb-0">
                     <Link :href="route('users.create')" class="sm:mt-0 w-full sm:w-auto">
-                    <Button label="Crear usuario" icon="pi pi-plus" class="w-full" />
+                    <Button v-if="hasPermission('crear_usuarios')" label="Crear usuario" icon="pi pi-plus" class="w-full" />
                     </Link>
                 </div>
                 <div

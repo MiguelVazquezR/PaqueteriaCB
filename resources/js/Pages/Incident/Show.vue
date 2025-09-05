@@ -324,10 +324,10 @@ const confirmDeleteBreak = (breakItem) => {
                         <Button icon="pi pi-chevron-right" text rounded :disabled="!navigation.next_period_id"
                             @click="navigation.next_period_id && router.get(route('incidents.show', navigation.next_period_id))" />
                     </div>
-                    <div class="flex items-center gap-2 w-full md:w-auto">
+                    <div class="lg:flex items-center gap-2 w-full md:w-auto">
                         <Select v-model="selectedBranch" :options="branches" optionLabel="name" optionValue="id"
                             placeholder="Todas las sucursales" class="w-full md:w-56" size="large" showClear />
-                        <IconField class="w-full md:w-auto">
+                        <IconField class="w-full md:w-auto mt-2 lg:mt-0">
                             <InputText v-model="search" placeholder="Buscar empleado" class="w-full" />
                             <InputIcon class="pi pi-search" />
                         </IconField>
@@ -347,8 +347,8 @@ const confirmDeleteBreak = (breakItem) => {
                     <div
                         class="flex justify-between items-end p-4 bg-[#f8f8f8] text-[#3f3f3f] rounded-[9px] dark:bg-gray-700 dark:text-gray-100">
                         <div class="flex items-center gap-3">
-                            <Avatar :image="employee.avatar_url" :label="employee.name[0]" shape="circle" size="large"
-                                class="!bg-[#d9d9d9]" />
+                            <img :src="employee.avatar_url" :alt="employee.name"
+                                class="size-12 rounded-full object-cover" />
                             <div>
                                 <h2 class="font-bold text-lg m-0">{{ employee.name }}</h2>
                                 <p class="text-sm">N° {{ employee.employee_number }} • {{

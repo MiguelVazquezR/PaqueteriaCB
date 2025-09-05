@@ -136,7 +136,7 @@ const submit = () => {
 
                     <div class="border rounded-lg p-2 space-y-4">
                         <div
-                            class="hidden md:grid grid-cols-4 gap-4 font-semibold text-sm bg-[#f8f8f8] rounded-lg py-1 px-2 text-gray-600 dark:text-gray-400">
+                            class="hidden md:grid grid-cols-4 gap-4 font-semibold text-sm bg-[#f8f8f8] dark:bg-gray-900 rounded-lg py-1 px-2 text-gray-600 dark:text-gray-400">
                             <span>Día</span>
                             <span>Apertura</span>
                             <span>Cierre</span>

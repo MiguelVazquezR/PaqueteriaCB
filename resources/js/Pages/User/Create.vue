@@ -6,7 +6,6 @@ import InputLabel from '@/Components/InputLabel.vue';
 import CruzIcon from '@/Components/Icons/CruzIcon.vue';
 import FacialIcon from '@/Components/Icons/FacialIcon.vue';
 import { PrimeIcons } from '@primevue/core/api';
-import { useToast } from 'primevue';
 import { format } from 'date-fns';
 
 
@@ -19,7 +18,6 @@ const props = defineProps({
 });
 
 // --- Refs and State ---
-const toast = useToast();
 const home = ref({ icon: 'pi pi-home', url: route('dashboard') });
 const items = ref([
     { label: 'Usuarios', url: route('users.index'), icon: PrimeIcons.USER },
@@ -89,11 +87,6 @@ const selectedSchedule = computed(() => {
 });
 
 // --- Methods ---
-function showSuccess() {
-    toast.add({ severity: 'success', summary: 'Éxito', detail: 'Usuario creado correctamente', life: 3000 });
-}
-
-// Updated file select method
 const onFileSelect = (event) => {
     const file = event.files[0];
     if (file) {
@@ -115,7 +108,6 @@ const clearImage = () => {
 const submit = () => {
     form.post(route('users.store'), {
         onSuccess: () => {
-            showSuccess();
         },
         onError: (err) => {
             console.log(err)

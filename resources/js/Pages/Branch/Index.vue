@@ -1,10 +1,11 @@
 <script setup>
 import { ref, watch } from 'vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { debounce } from 'lodash';
 // --- CAMBIO: --- Importar 'format' para la hora.
 import { format } from 'date-fns';
+import { useConfirm } from 'primevue';
 
 // --- Props (sin cambios) ---
 const props = defineProps({
@@ -20,6 +21,8 @@ const menu = ref();
 const selectedBranchMenu = ref(null);
 const rows = ref(props.branches.per_page);
 
+const confirm = useConfirm(); // Se inicializa
+
 // --- CAMBIO: --- Refs para el popover del horario.
 const schedulePopover = ref();
 const selectedHours = ref(null);
@@ -30,6 +33,33 @@ watch(search, debounce((value) => {
 }, 300));
 
 // --- Methods (lógica de filtros sin cambios) ---
+const hasPermission = (permission) => {
+    return usePage().props.auth.permissions?.includes(permission) ?? false;
+};
+
+const confirmDeleteBranch = (branch) => {
+    confirm.require({
+        message: `¿Estás seguro de que quieres eliminar la sucursal "${branch.name}"? Esta acción no se puede deshacer.`,
+        header: 'Confirmar Eliminación',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Sí, eliminar',
+        rejectProps: {
+            label: 'Cancelar',
+            severity: 'secondary',
+            outlined: true
+        },
+        acceptProps: {
+            label: 'Eliminar',
+            severity: 'danger'
+        },
+        accept: () => {
+            router.delete(route('branches.destroy', branch.id), {
+                preserveScroll: true,
+            });
+        }
+    });
+};
+
 const onSort = (event) => {
     router.get(route('branches.index'), { ...props.filters, sort_by: event.sortField, sort_direction: event.sortOrder === 1 ? 'asc' : 'desc', per_page: rows.value }, { preserveState: true, replace: true, });
 };
@@ -40,13 +70,25 @@ const onPage = (event) => {
 };
 
 const toggleMenu = (event, branch) => {
-    // --- CAMBIO: --- Se añade la opción 'Ver detalles' al menú.
-    selectedBranchMenu.value = [
-        { label: 'Ver detalles', icon: 'pi pi-eye', command: () => router.get(route('branches.show', branch.id)) },
-        { label: 'Editar', icon: 'pi pi-pencil', command: () => router.get(route('branches.edit', branch.id)) },
-        { label: 'Eliminar', icon: 'pi pi-trash', class: 'p-menuitem-text-danger', command: () => console.log('Eliminar', branch.id) }
-    ];
-    menu.value.toggle(event);
+    const menuItems = [];
+
+    // --- CAMBIO: --- Se añaden los elementos al menú solo si el usuario tiene el permiso correspondiente.
+    if (hasPermission('ver_sucursales')) {
+        menuItems.push({ label: 'Ver detalles', icon: 'pi pi-eye', command: () => router.get(route('branches.show', branch.id)) });
+    }
+    if (hasPermission('editar_sucursales')) {
+        menuItems.push({ label: 'Editar', icon: 'pi pi-pencil', command: () => router.get(route('branches.edit', branch.id)) });
+    }
+    if (hasPermission('eliminar_sucursales')) {
+        menuItems.push({ label: 'Eliminar', icon: 'pi pi-trash', class: 'p-menuitem-text-danger', command: () => confirmDeleteBranch(branch) });
+    }
+    
+    selectedBranchMenu.value = menuItems;
+
+    // Solo se muestra el menú si contiene al menos una opción.
+    if (menuItems.length > 0) {
+        menu.value.toggle(event);
+    }
 };
 
 // --- CAMBIO: --- Nuevos métodos para formatear y mostrar el horario.
@@ -81,7 +123,7 @@ const toggleSchedulePopover = (event, branch) => {
             <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg">
                 <div class="flex justify-end items-center p-6 pb-0">
                     <Link :href="route('branches.create')" class="sm:mt-0 w-full sm:w-auto">
-                        <Button label="Crear sucursal" icon="pi pi-plus" class="w-full" />
+                        <Button v-if="hasPermission('crear_sucursales')" label="Crear sucursal" icon="pi pi-plus" class="w-full" />
                     </Link>
                 </div>
                 <div class="flex flex-col sm:flex-row justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">

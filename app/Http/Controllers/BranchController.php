@@ -117,4 +117,16 @@ class BranchController extends Controller
             'branch' => $branch,
         ]);
     }
+
+    public function destroy(Branch $branch)
+    {
+        // Regla de negocio: No se puede eliminar una sucursal si tiene empleados.
+        if ($branch->employees()->count() > 0) {
+            return back()->with('error', 'No se puede eliminar una sucursal que tiene empleados asignados.');
+        }
+
+        $branch->delete();
+
+        return redirect()->route('branches.index')->with('success', 'Sucursal eliminada correctamente.');
+    }
 }

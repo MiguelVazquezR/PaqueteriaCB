@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { PrimeIcons } from '@primevue/core/api';
 import { format } from 'date-fns';
@@ -139,6 +139,10 @@ const formatDate = (dateString) => {
     }
 };
 
+const hasPermission = (permission) => {
+    return usePage().props.auth.permissions?.includes(permission) ?? false;
+};
+
 // métodos para mostrar el popover del horario
 const toggleSchedulePopover = (event) => {
     scheduleOp.value.toggle(event);
@@ -195,7 +199,7 @@ const calculateDayTotalHours = (detail) => {
                     </div>
                     <div class="sm:ml-auto">
                         <Link :href="route('users.edit', user.id)">
-                        <Button label="Editar perfil" icon="pi pi-pencil" outlined />
+                        <Button v-if="hasPermission('editar_usuarios')" label="Editar perfil" icon="pi pi-pencil" outlined />
                         </Link>
                     </div>
                 </div>
@@ -208,7 +212,7 @@ const calculateDayTotalHours = (detail) => {
                     <!-- Card: Información Laboral -->
                     <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-2">
                         <h2
-                            class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
+                            class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-gray-900 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
                             <i class="pi pi-briefcase"></i>
                             <span>Información laboral</span>
                         </h2>
@@ -262,7 +266,7 @@ const calculateDayTotalHours = (detail) => {
                                     empleado.</p>
                             </div>
                             <div class="flex gap-2 mt-4 sm:mt-0">
-                                <SplitButton label="Ajustar saldo inicial" :model="transactionMenuItems"
+                                <SplitButton v-if="hasPermission('vacaciones_usuarios')" label="Ajustar saldo inicial" :model="transactionMenuItems"
                                     @click="isInitialBalanceModalVisible = true" severity="secondary" size="small"
                                     outlined />
                             </div>
@@ -300,7 +304,7 @@ const calculateDayTotalHours = (detail) => {
                     <!-- Card: Información Personal -->
                     <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-2">
                         <h2
-                            class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
+                            class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-gray-900 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
                             <i class="pi pi-user"></i>
                             <span>Información personal</span>
                         </h2>
@@ -320,7 +324,7 @@ const calculateDayTotalHours = (detail) => {
                     <!-- Card: Contacto de emergencia -->
                     <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-2">
                         <h2
-                            class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
+                            class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-gray-900 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
                             <CruzIcon class="size-4" />
                             <span>Contacto de emergencia</span>
                         </h2>
@@ -341,7 +345,7 @@ const calculateDayTotalHours = (detail) => {
                     <!-- Card: Gestión de vacaciones -->
                     <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-2">
                         <h2
-                            class="font-semibold flex items-center justify-between text-base bg-[#f8f8f8] rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
+                            class="font-semibold flex items-center justify-between text-base bg-[#f8f8f8] dark:bg-gray-900 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
                             <div class="flex items-center space-x-3">
                                 <AvionIcon class="size-4" />
                                 <span>Gestión de vacaciones</span>

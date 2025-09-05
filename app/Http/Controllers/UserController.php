@@ -187,7 +187,7 @@ class UserController extends Controller
             // Asignar el horario al empleado
             $employee->schedules()->attach($request->input('schedule_id'), ['start_date' => now()]);
 
-             // Si el formulario incluye una imagen facial, la procesamos y la enviamos a AWS.
+            // Si el formulario incluye una imagen facial, la procesamos y la enviamos a AWS.
             if ($request->hasFile('facial_image')) {
                 try {
                     // Obtenemos el contenido binario de la imagen.
@@ -231,7 +231,7 @@ class UserController extends Controller
             }
         });
 
-        return redirect()->route('users.index');
+        return redirect()->route('users.index')->with('success', 'Usuario creado.');
     }
 
     public function edit(User $user)
@@ -291,7 +291,7 @@ class UserController extends Controller
                 'email' => $request->input('email'),
             ]);
 
-             if ($employee) {
+            if ($employee) {
                 $currentFaceId = $employee->aws_rekognition_face_id;
 
                 // Caso 1: Se sube una NUEVA imagen facial.
@@ -304,7 +304,7 @@ class UserController extends Controller
                     $imageContents = $request->file('facial_image')->get();
                     $newFaceId = $rekognitionService->indexFace($imageContents, $employee->employee_number);
                     $employee->aws_rekognition_face_id = $newFaceId;
-                } 
+                }
                 // Caso 2: Se marca la casilla para ELIMINAR la foto existente.
                 elseif ($request->input('delete_photo') && $currentFaceId) {
                     // Eliminamos el rostro de la colección de AWS.
@@ -344,7 +344,7 @@ class UserController extends Controller
             }
         });
 
-        return redirect()->route('users.index');
+        return redirect()->route('users.index')->with('success', 'Usuario actualizado.');
     }
 
     public function show(User $user)
@@ -364,5 +364,23 @@ class UserController extends Controller
         return Inertia::render('User/Show', [
             'user' => $userData,
         ]);
+    }
+
+    public function destroy(User $user)
+    {
+        // Regla de negocio: No permitir la eliminación del primer usuario (super admin).
+        if ($user->id === 1) {
+            return back()->with('error', 'El usuario administrador principal no puede ser eliminado.');
+        }
+
+        DB::transaction(function () use ($user) {
+            // Eliminar al empleado asociado primero (si existe)
+            $user->employee?->delete();
+
+            // Eliminar al usuario
+            $user->delete();
+        });
+
+        return redirect()->route('users.index')->with('success', 'Usuario eliminado.');
     }
 }
