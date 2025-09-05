@@ -70,4 +70,22 @@ class RolePermissionController extends Controller
 
         return back()->with('success', 'Permisos actualizados correctamente.');
     }
+
+    public function destroy(Role $role)
+    {
+        // Regla 1: Prevenir la eliminación del rol principal 'Administrador'.
+        if ($role->name === 'Administrador') {
+            return back()->with('error', 'El rol de Administrador no puede ser eliminado.');
+        }
+
+        // Regla 2: Prevenir la eliminación si el rol está asignado a usuarios.
+        if ($role->users()->count() > 0) {
+            return back()->with('error', 'Este rol no puede ser eliminado porque está asignado a uno o más usuarios.');
+        }
+
+        $role->delete();
+
+        // Se usa redirect() en lugar de back() para que la lista de roles se actualice correctamente.
+        return redirect()->route('settings.roles-permissions.index')->with('success', 'Rol eliminado correctamente.');
+    }
 }

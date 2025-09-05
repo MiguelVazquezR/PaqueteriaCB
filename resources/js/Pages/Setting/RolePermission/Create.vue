@@ -58,7 +58,7 @@ const submit = () => {
 
                     <div class="space-y-6">
                         <div v-for="(permissionGroup, groupName) in permissions" :key="groupName">
-                            <h3 class="font-semibold text-gray-700 dark:text-gray-300 capitalize mb-2 flex items-center gap-2 border-b pb-2">
+                            <h3 class="font-semibold text-gray-700 dark:text-gray-300 capitalize mb-2 flex items-center gap-2 border-b pb-2 text-base">
                                 <i class="pi pi-folder"></i>
                                 <span>{{ groupName }}</span>
                             </h3>

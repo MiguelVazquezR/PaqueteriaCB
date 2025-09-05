@@ -121,6 +121,30 @@ const confirmDeletePermission = (permission) => {
     });
 };
 
+const confirmDeleteRole = (role) => {
+    confirm.require({
+        message: `¿Estás seguro de que quieres eliminar el rol "${role.name}"? Esta acción no se puede deshacer.`,
+        header: 'Confirmar Eliminación de Rol',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Sí, eliminar',
+        rejectLabel: 'Cancelar',
+        acceptClass: 'p-button-danger',
+        accept: () => {
+            router.delete(route('settings.roles-permissions.destroy', role.id), {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    // Si el rol se eliminó, el backend redirige y el watcher
+                    // se encargará de mostrar el mensaje de éxito.
+                    // Cerramos el drawer si el rol eliminado era el que se estaba viendo.
+                    if (page.props.flash.success && selectedRole.value && selectedRole.value.id === role.id) {
+                        drawerVisible.value = false;
+                    }
+                }
+            });
+        }
+    });
+};
+
 // Función auxiliar para verificar permisos
 const hasPermission = (permission) => {
     return usePage().props.auth.permissions?.includes(permission) ?? false;
@@ -165,7 +189,7 @@ const hasPermission = (permission) => {
             </div>
 
             <!-- === DRAWER DE PERMISOS === -->
-            <Drawer v-model:visible="drawerVisible" position="right" class="w-full md:w-96 lg:w-[30rem]">
+            <Drawer v-model:visible="drawerVisible" position="right" class="!w-full md:!w-96 lg:!w-[30rem]">
                 <template #header>
                     <div class="w-full flex justify-between items-center">
                         <div>
@@ -173,14 +197,16 @@ const hasPermission = (permission) => {
                             <p class="text-sm text-gray-500">Este rol tiene {{ selectedRole?.permissions_count }} de {{
                                 permissions.length }} permisos</p>
                         </div>
-                        <Button icon="pi pi-trash" severity="danger" text rounded aria-label="Eliminar rol" />
+                        <Button icon="pi pi-trash" severity="danger" text rounded aria-label="Eliminar rol"
+                            @click="confirmDeleteRole(selectedRole)"
+                            v-if="hasPermission('gestionar_roles_permisos')" />
                     </div>
                 </template>
 
                 <div class="space-y-6">
                     <div v-for="(permissionGroup, groupName) in permissions" :key="groupName">
                         <h3
-                            class="font-semibold text-gray-700 dark:text-gray-300 capitalize mb-2 flex items-center gap-2">
+                            class="font-semibold text-gray-700 dark:text-gray-300 capitalize mb-2 flex items-center gap-2 text-base">
                             <i class="pi pi-folder"></i>
                             <span>{{ groupName }}</span>
                         </h3>
@@ -239,7 +265,7 @@ const hasPermission = (permission) => {
                         </div>
                         <div class="flex flex-col gap-2">
                             <InputLabel for="category" value="Categoría del permiso*" />
-                            <Dropdown id="category" v-model="newPermissionForm.category" :options="permissionCategories"
+                            <Select id="category" v-model="newPermissionForm.category" :options="permissionCategories"
                                 editable placeholder="Selecciona o escribe una categoría" class="w-full"
                                 :invalid="!!newPermissionForm.errors.category" />
                             <small v-if="newPermissionForm.errors.category" class="text-red-500">{{

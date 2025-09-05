@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('settings')->name('settings.')->group(function () {
     Route::resource('roles-permissions', RolePermissionController::class)
-        ->except(['show', 'edit', 'update', 'destroy']);
+        ->except(['show', 'edit', 'update']);
     Route::put('roles-permissions/{role}/permissions', [RolePermissionController::class, 'updatePermissions'])->name('roles-permissions.updatePermissions');
     // ->middleware('can:gestionar_roles_permisos'); // El permiso se aplica a todas las rutas de este resource.;
     Route::resource('holidays', HolidayController::class)->except(['show']);
