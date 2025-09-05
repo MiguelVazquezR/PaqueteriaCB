@@ -2,83 +2,140 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\BonusReport;
-use App\Models\Employee;
-use App\Models\Incident;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Carbon\Carbon;
+use App\Models\BonusReport;
+use App\Models\Employee;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Auth;
 
 class BonusController extends Controller
 {
     public function index()
     {
-        // Agrupar los reportes por mes para crear la lista de períodos
-        $periods = BonusReport::selectRaw('DATE_FORMAT(period_date, "%Y-%m-01") as period, MIN(created_at) as created_at')
-            ->groupBy('period')
-            ->orderBy('period', 'desc')
-            ->paginate(20);
+        // Obtenemos los últimos 12 meses donde hubo reportes o se espera que haya.
+        $periods = BonusReport::orderBy('period', 'desc')->paginate(12);
+
+        // Transformamos los datos para añadir el estatus correcto.
+        $periods->through(fn($report) => [
+            'period' => $report->period,
+            'status' => $report->status,
+        ]);
 
         return Inertia::render('Bonus/Index', [
             'periods' => $periods,
         ]);
     }
 
-    public function show($period) // El período vendrá como 'YYYY-MM'
+    public function show(string $period)
     {
-        $startOfMonth = Carbon::parse($period)->startOfMonth();
-        $endOfMonth = Carbon::parse($period)->endOfMonth();
+        $periodDate = Carbon::createFromFormat('Y-m', $period)->startOfMonth();
 
-        // Obtener todos los empleados
-        $employees = Employee::with('branch')->get();
+        // Eager load details y la relación con el empleado para eficiencia
+        $report = BonusReport::where('period', $periodDate)
+            ->with('details.employee')
+            ->firstOrFail();
 
-        $reportData = $employees->map(function ($employee) use ($startOfMonth, $endOfMonth) {
-            // Calcular total de minutos de retardo en el mes
-            $totalLateMinutes = $employee->attendances()
-                ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
-                ->sum('late_minutes');
+        // --- CAMBIO CLAVE: --- Se procesan los datos directamente desde los detalles del reporte.
+        $employeeBonuses = $report->details
+            ->groupBy('employee_id') // Agrupar por empleado
+            ->map(function ($detailsForEmployee) {
+                $employee = $detailsForEmployee->first()->employee;
+                if (!$employee) return null; // Omitir si el empleado fue eliminado
 
-            // Calcular total de faltas injustificadas
-            $unjustifiedAbsenceTypeId = 2; // Asumiendo que el ID de 'Falta injustificada' es 2
-            $totalUnjustifiedAbsences = $employee->incidents()
-                ->where('incident_type_id', $unjustifiedAbsenceTypeId)
-                ->whereBetween('start_date', [$startOfMonth, $endOfMonth])
-                ->count();
+                $punctualityDetail = $detailsForEmployee->firstWhere('bonus_name', 'Bono de Puntualidad');
+                $attendanceDetail = $detailsForEmployee->firstWhere('bonus_name', 'Bono de Asistencia');
 
-            // Aplicar reglas de negocio
-            $punctualityBonus = $totalLateMinutes <= 15;
-            $attendanceBonus = $totalUnjustifiedAbsences === 0;
-
-            // Guardar o actualizar el reporte en la base de datos
-            BonusReport::updateOrCreate(
-                [
-                    'employee_id' => $employee->id,
-                    'period_date' => $startOfMonth->toDateString(),
-                ],
-                [
-                    'total_late_minutes' => $totalLateMinutes,
-                    'total_unjustified_absences' => $totalUnjustifiedAbsences,
-                    'punctuality_bonus_earned' => $punctualityBonus,
-                    'attendance_bonus_earned' => $attendanceBonus,
-                ]
-            );
-
-            return [
-                'id' => $employee->id,
-                'employee_number' => $employee->employee_number,
-                'name' => $employee->first_name . ' ' . $employee->last_name,
-                'branch_name' => $employee->branch->name,
-                'punctuality_bonus' => $punctualityBonus,
-                'attendance_bonus' => $attendanceBonus,
-                'late_minutes' => $totalLateMinutes,
-                'unjustified_absences' => $totalUnjustifiedAbsences,
-            ];
-        })->groupBy('branch_name');
-
+                return [
+                    'id' => $employee->id,
+                    'name' => $employee->first_name . ' ' . $employee->last_name,
+                    'employee_number' => $employee->employee_number,
+                    'punctuality_earned' => $punctualityDetail ? $punctualityDetail->calculated_amount > 0 : false,
+                    'attendance_earned' => $attendanceDetail ? $attendanceDetail->calculated_amount > 0 : false,
+                    'late_minutes' => $punctualityDetail->calculation_details['late_minutes'] ?? 0,
+                    'unjustified_absences' => $attendanceDetail->calculation_details['unjustified_absences'] ?? 0,
+                ];
+            })
+            ->filter() // Eliminar nulos si algún empleado fue borrado
+            ->values(); // Resetear las llaves del array
 
         return Inertia::render('Bonus/Show', [
-            'period' => $startOfMonth,
-            'reportData' => $reportData,
+            'report' => $report,
+            'employeeBonuses' => $employeeBonuses,
         ]);
+    }
+
+    public function print(string $period)
+    {
+        $periodDate = Carbon::createFromFormat('Y-m', $period)->startOfMonth();
+
+        $report = BonusReport::where('period', $periodDate)
+            ->with('details.employee.branch')
+            ->firstOrFail();
+
+        // --- CAMBIO CLAVE: --- La lógica ahora es idéntica a la del método 'show' para consistencia.
+        $employeeData = $report->details
+            ->groupBy('employee_id')
+            ->map(function ($detailsForEmployee) {
+                $employee = $detailsForEmployee->first()->employee;
+                if (!$employee) return null;
+
+                $punctualityDetail = $detailsForEmployee->firstWhere('bonus_name', 'Bono de Puntualidad');
+                $attendanceDetail = $detailsForEmployee->firstWhere('bonus_name', 'Bono de Asistencia');
+
+                return [
+                    'employee_id' => $employee->id,
+                    'employee_number' => $employee->employee_number,
+                    'employee_name' => $employee->first_name . ' ' . $employee->last_name,
+                    'branch_name' => $employee->branch->name,
+                    'punctuality_earned' => $punctualityDetail ? $punctualityDetail->calculated_amount > 0 : false,
+                    'attendance_earned' => $attendanceDetail ? $attendanceDetail->calculated_amount > 0 : false,
+                    'total_late_minutes' => $punctualityDetail->calculation_details['late_minutes'] ?? 0,
+                    'total_unjustified_absences' => $attendanceDetail->calculation_details['unjustified_absences'] ?? 0,
+                ];
+            })
+            ->filter()
+            ->values();
+
+        $branches = $employeeData->groupBy('branch_name');
+
+        return Inertia::render('Bonus/Print', [
+            'report' => $report,
+            'branches' => $branches,
+        ]);
+    }
+
+    public function finalize(string $period)
+    {
+        $periodDate = Carbon::createFromFormat('Y-m', $period)->startOfMonth();
+        $report = BonusReport::where('period', $periodDate)->firstOrFail();
+
+        if ($report->status !== 'draft') {
+            return back()->with('error', 'Este reporte ya ha sido finalizado.');
+        }
+
+        $report->update([
+            'status' => 'finalized',
+            'finalized_at' => now(),
+            'finalized_by_user_id' => Auth::id(),
+        ]);
+
+        return redirect()->route('bonuses.show', $period)->with('success', 'El reporte de bonos ha sido finalizado y cerrado.');
+    }
+
+    public function recalculate(string $period)
+    {
+        $periodDate = Carbon::createFromFormat('Y-m', $period)->startOfMonth();
+        $report = BonusReport::where('period', $periodDate)->firstOrFail();
+
+        if ($report->status === 'finalized') {
+            return back()->with('error', 'No se puede recalcular un reporte que ya ha sido finalizado.');
+        }
+
+        // Llama al comando de Artisan para regenerar el reporte en borrador
+        Artisan::call('bonuses:generate', ['--month' => $period]);
+
+        return redirect()->route('bonuses.show', $period)->with('success', 'El reporte ha sido recalculado con los datos más recientes.');
     }
 }

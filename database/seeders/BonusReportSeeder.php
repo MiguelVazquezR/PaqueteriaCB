@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\BonusReport;
 use App\Models\Employee;
 use Carbon\Carbon;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class BonusReportSeeder extends Seeder
@@ -16,39 +15,43 @@ class BonusReportSeeder extends Seeder
     public function run(): void
     {
         $employees = Employee::where('is_active', true)->get();
-        $unjustifiedAbsenceTypeId = 1; // Asegúrate que este sea el ID correcto para 'Falta injustificada'
 
-        // Generar reportes para los últimos 12 meses
-        for ($i = 0; $i < 12; $i++) {
+        // Generar reportes de ejemplo para los últimos 3 meses
+        for ($i = 0; $i < 3; $i++) {
             $date = Carbon::now()->subMonths($i);
             $startOfMonth = $date->copy()->startOfMonth();
-            $endOfMonth = $date->copy()->endOfMonth();
 
+            // El mes más reciente estará en borrador, los demás finalizados.
+            $status = ($i === 0) ? 'draft' : 'finalized';
+
+            // Crear el reporte principal para el mes
+            $report = BonusReport::create([
+                'period' => $startOfMonth->toDateString(),
+                'status' => $status,
+                'generated_at' => now(),
+                'finalized_at' => ($status === 'finalized') ? now() : null,
+                'finalized_by_user_id' => ($status === 'finalized') ? 1 : null, // Asumimos que el admin (ID 1) lo finalizó
+            ]);
+
+            // Crear detalles de ejemplo para cada empleado en este reporte
             foreach ($employees as $employee) {
-                // Calcular total de minutos de retardo en el mes
-                $totalLateMinutes = $employee->attendances()
-                    ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
-                    ->sum('late_minutes');
-
-                // Calcular total de faltas injustificadas
-                $totalUnjustifiedAbsences = $employee->incidents()
-                    ->where('incident_type_id', $unjustifiedAbsenceTypeId)
-                    ->whereBetween('start_date', [$startOfMonth, $endOfMonth])
-                    ->count();
-
-                // Aplicar reglas de negocio
-                $punctualityBonus = $totalLateMinutes <= 15;
-                $attendanceBonus = $totalUnjustifiedAbsences === 0;
-
-                // Crear el registro del reporte de bono
-                BonusReport::create([
+                // Simular un bono de puntualidad ganado
+                $report->details()->create([
                     'employee_id' => $employee->id,
-                    'period_date' => $startOfMonth->toDateString(),
-                    'total_late_minutes' => $totalLateMinutes,
-                    'total_unjustified_absences' => $totalUnjustifiedAbsences,
-                    'punctuality_bonus_earned' => $punctualityBonus,
-                    'attendance_bonus_earned' => $attendanceBonus,
+                    'bonus_name' => 'Bono de Puntualidad',
+                    'calculated_amount' => 500.00,
+                    'calculation_details' => ['message' => 'Total de retardos: 10 min.'],
                 ]);
+
+                // Simular un bono de asistencia ganado por la mitad de los empleados
+                if ($employee->id % 2 == 0) {
+                    $report->details()->create([
+                        'employee_id' => $employee->id,
+                        'bonus_name' => 'Bono de Asistencia',
+                        'calculated_amount' => 800.00,
+                        'calculation_details' => ['message' => 'Asistencia perfecta.'],
+                    ]);
+                }
             }
         }
     }

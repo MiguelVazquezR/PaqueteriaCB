@@ -4,41 +4,40 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class BonusReport extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
-        'employee_id',
-        'period_date',
-        'total_late_minutes',
-        'total_unjustified_absences',
-        'punctuality_bonus_earned',
-        'attendance_bonus_earned',
+        'period',
+        'status',
+        'generated_at',
+        'finalized_by_user_id',
+        'finalized_at',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
-        'period_date' => 'date',
-        'punctuality_bonus_earned' => 'boolean',
-        'attendance_bonus_earned' => 'boolean',
+        'period' => 'date',
+        'generated_at' => 'datetime',
+        'finalized_at' => 'datetime',
     ];
 
     /**
-     * Get the employee that owns the bonus report.
+     * Obtiene los detalles (bonos por empleado) de este reporte.
      */
-    public function employee()
+    public function details(): HasMany
     {
-        return $this->belongsTo(Employee::class);
+        return $this->hasMany(BonusReportDetail::class);
+    }
+
+    /**
+     * Obtiene el usuario que finalizó el reporte.
+     */
+    public function finalizedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'finalized_by_user_id');
     }
 }

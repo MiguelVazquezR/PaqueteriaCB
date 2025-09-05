@@ -1,107 +1,124 @@
 <script setup>
-import { ref } from 'vue'; // Importar ref
-import { Head } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { format } from 'date-fns';
 import es from 'date-fns/locale/es';
+import { useConfirm } from "primevue/useconfirm";
 
-const props = defineProps({ period: String, reportData: Object });
+const props = defineProps({
+    report: Object,
+    employeeBonuses: Array, // Recibimos la nueva prop con los datos procesados
+});
+const confirm = useConfirm();
 
-// --- Refs and State for Breadcrumb ---
+const pageTitle = computed(() => {
+    const date = new Date(props.report.period);
+    return `Reporte de Bonos - ${format(date, 'MMMM yyyy', { locale: es })}`;
+});
+
 const home = ref({ icon: 'pi pi-home', url: route('dashboard') });
 const items = ref([
     { label: 'Bonos', url: route('bonuses.index') },
-    { label: `Reporte Mes ${format(new Date(props.period), 'MM')}` }
+    { label: `Detalles - ${format(new Date(props.report.period), 'MMMM yyyy', { locale: es })}` }
 ]);
 
-// --- Methods ---
-const formatDate = (dateString, formatStr) => {
-    // Agregamos una comprobación para evitar errores con fechas inválidas
-    const date = new Date(dateString);
-    if (isNaN(date)) return '-';
-    return format(date, formatStr, { locale: es });
+const periodFormatted = computed(() => {
+    const date = new Date(props.report.period);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+});
+
+const finalizeReport = () => {
+    confirm.require({
+        message: '¿Estás seguro de que quieres finalizar este reporte? Una vez finalizado, los cálculos no podrán ser modificados.',
+        header: 'Confirmación de Finalización',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Sí, finalizar',
+        rejectLabel: 'Cancelar',
+        accept: () => {
+            router.post(route('bonuses.finalize', periodFormatted.value));
+        }
+    });
 };
 
-const printReport = () => {
-    window.print();
+const recalculateReport = () => {
+    confirm.require({
+        message: 'Esta acción volverá a calcular todos los bonos para este periodo usando los datos más recientes de asistencias e incidencias. ¿Deseas continuar?',
+        header: 'Confirmación de Recálculo',
+        icon: 'pi pi-refresh',
+        acceptLabel: 'Sí, recalcular',
+        rejectLabel: 'Cancelar',
+        accept: () => {
+            router.post(route('bonuses.recalculate', periodFormatted.value), {}, {
+                preserveScroll: true,
+            });
+        }
+    });
 };
 
+// Modelo de datos para el SplitButton
+const finalizeOptions = ref([
+    {
+        label: 'Recalcular Borrador',
+        icon: 'pi pi-refresh',
+        command: () => {
+            recalculateReport();
+        }
+    }
+]);
 </script>
 
 <template>
-    <Head title="Reporte de Bonos" />
-    <AppLayout>
-        <Breadcrumb :home="home" :model="items" class="!bg-transparent print:hidden" />
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6" id="print-container">
-                <!-- HEADER -->
-                <div class="flex justify-between items-start pb-4 border-b">
-                    <div>
-                        <h1 class="text-2xl font-bold">Reporte bonos</h1>
-                        <p class="text-gray-500">Periodo: {{ formatDate(period, "dd MMMM yyyy") }} - {{ formatDate(new Date(period).setMonth(new Date(period).getMonth() + 1) - 1, "dd MMMM yyyy") }}</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="font-bold">Paquetería Casa Blanca</p>
-                        <p class="text-sm text-gray-500">Generado {{ formatDate(new Date(), "dd MMMM yyyy, hh:mm a") }}</p>
-                    </div>
-                </div>
-                <!-- ✨ Botón de Imprimir ✨ -->
-                <div class="flex justify-end mt-4 print:hidden">
-                    <Button label="Imprimir o guardar en PDF" icon="pi pi-print" @click="printReport" />
-                </div>
 
-                <!-- TABLAS POR SUCURSAL -->
-                <div v-for="(employees, branchName) in reportData" :key="branchName" class="mt-8">
-                    <div class="bg-gray-100 p-3 rounded-t-lg">
-                        <h2 class="font-bold flex items-center gap-2 text-lg"><i class="pi pi-building"></i><span>Sucursal {{ branchName }}</span></h2>
+    <Head :title="pageTitle" />
+    <AppLayout>
+        <Breadcrumb :home="home" :model="items" class="!bg-transparent" />
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg">
+                <div class="p-6 border-b flex flex-col sm:flex-row justify-between items-start">
+                    <div>
+                        <h1 class="text-2xl font-bold capitalize">{{ pageTitle }}</h1>
+                        <div class="flex items-center gap-2 mt-2">
+                            <span class="font-semibold">Estatus:</span>
+                            <Tag v-if="report.status === 'draft'" value="Borrador" severity="warn" />
+                            <Tag v-if="report.status === 'finalized'" value="Finalizado" severity="success" />
+                        </div>
                     </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm text-left">
-                            <thead class="bg-gray-50 text-xs uppercase">
-                                <tr>
-                                    <th class="px-4 py-3">N° empleado</th>
-                                    <th class="px-4 py-3">Colaborador</th>
-                                    <th class="px-4 py-3">Puntualidad</th>
-                                    <th class="px-4 py-3">Asistencia</th>
-                                    <th class="px-4 py-3">Retardos</th>
-                                    <th class="px-4 py-3">Faltas inj.</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="employee in employees" :key="employee.id" class="border-b">
-                                    <td class="px-4 py-3 font-medium">{{ employee.employee_number }}</td>
-                                    <td class="px-4 py-3">{{ employee.name }}</td>
-                                    <td class="px-4 py-3"><i :class="['pi', employee.punctuality_bonus ? 'pi-check-circle text-green-500' : 'pi-times-circle text-red-500']"></i></td>
-                                    <td class="px-4 py-3"><i :class="['pi', employee.attendance_bonus ? 'pi-check-circle text-green-500' : 'pi-times-circle text-red-500']"></i></td>
-                                    <td class="px-4 py-3">{{ employee.late_minutes }} min</td>
-                                    <td class="px-4 py-3">{{ employee.unjustified_absences }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div class="flex items-center gap-2 mt-4 sm:mt-0">
+                        <Link :href="route('bonuses.print', periodFormatted)" target="_blank">
+                        <Button label="Imprimir Reporte" icon="pi pi-print" outlined />
+                        </Link>
+                        <SplitButton v-if="report.status === 'draft'" label="Finalizar y Aprobar"
+                            icon="pi pi-check-circle" @click="finalizeReport" :model="finalizeOptions" />
                     </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <!-- --- CAMBIO: --- La tabla ahora muestra a todos los empleados y sus resultados -->
+                    <DataTable :value="employeeBonuses" dataKey="id">
+                        <Column field="employee_number" header="N° Empleado"></Column>
+                        <Column field="name" header="Empleado"></Column>
+                        <Column header="Puntualidad" bodyClass="text-center">
+                            <template #body="{ data }">
+                                <i v-if="data.punctuality_earned" class="pi pi-check-circle text-green-500 text-lg"></i>
+                                <i v-else class="pi pi-times-circle text-red-500 text-lg"></i>
+                            </template>
+                        </Column>
+                        <Column header="Asistencia" bodyClass="text-center">
+                            <template #body="{ data }">
+                                <i v-if="data.attendance_earned" class="pi pi-check-circle text-green-500 text-lg"></i>
+                                <i v-else class="pi pi-times-circle text-red-500 text-lg"></i>
+                            </template>
+                        </Column>
+                        <Column field="late_minutes" header="Minutos Retardo"></Column>
+                        <Column field="unjustified_absences" header="Faltas Injust."></Column>
+                        <template #empty>
+                            <div class="text-center p-8">
+                                <p class="text-gray-500">No hay empleados activos para este periodo.</p>
+                            </div>
+                        </template>
+                    </DataTable>
                 </div>
             </div>
         </div>
     </AppLayout>
 </template>
-
-<style>
-@media print {
-    body * {
-        visibility: hidden;
-    }
-    #print-container, #print-container * {
-        visibility: visible;
-    }
-    #print-container {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        margin: 0;
-        padding: 1rem;
-        box-shadow: none;
-        border: none;
-    }
-}
-</style>

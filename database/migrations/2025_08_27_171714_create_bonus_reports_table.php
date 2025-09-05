@@ -11,17 +11,26 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Tabla para el reporte general del mes
         Schema::create('bonus_reports', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('employee_id')->constrained()->onDelete('cascade');
-            $table->date('period_date'); // Primer día del mes del reporte (ej. 2025-08-01)
-            $table->integer('total_late_minutes')->default(0);
-            $table->integer('total_unjustified_absences')->default(0);
-            $table->boolean('punctuality_bonus_earned')->default(false);
-            $table->boolean('attendance_bonus_earned')->default(false);
+            $table->date('period'); // Primer día del mes del reporte, ej: 2025-08-01
+            $table->string('status')->default('draft'); // draft, finalized
+            $table->timestamp('generated_at')->nullable();
+            $table->foreignId('finalized_by_user_id')->nullable()->constrained('users');
+            $table->timestamp('finalized_at')->nullable();
             $table->timestamps();
+        });
 
-            $table->unique(['employee_id', 'period_date']);
+        // Tabla para el desglose de bonos por empleado en cada reporte
+        Schema::create('bonus_report_details', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('bonus_report_id')->constrained('bonus_reports')->onDelete('cascade');
+            $table->foreignId('employee_id')->constrained('employees');
+            $table->string('bonus_name'); // Ej: "Bono de Puntualidad"
+            $table->decimal('calculated_amount', 10, 2)->default(0);
+            $table->json('calculation_details')->nullable(); // Para auditoría, ej: { "lates": 1, "absences": 0 }
+            $table->timestamps();
         });
     }
 
@@ -30,6 +39,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('bonus_report_details');
         Schema::dropIfExists('bonus_reports');
     }
 };
