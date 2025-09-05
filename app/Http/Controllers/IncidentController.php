@@ -53,23 +53,42 @@ class IncidentController extends Controller
     public function show(PayrollPeriod $period, Request $request)
     {
         $startDate = Carbon::parse($period->start_date)->startOfDay();
-        $endDate = Carbon::parse($period->end_date)->startOfDay();
+        $endDate = Carbon::parse($period->end_date)->endOfDay(); // Usar endOfDay para un rango inclusivo
 
         $previousPeriod = PayrollPeriod::where('end_date', '<', $startDate)->orderBy('end_date', 'desc')->first();
         $nextPeriod = PayrollPeriod::where('start_date', '>', $endDate)->orderBy('start_date', 'asc')->first();
 
-        // Usamos el nuevo scope y cargamos todas las relaciones necesarias
-        $employees = Employee::activeInPeriod($startDate, $endDate)
-            ->with(['branch', 'user', 'schedules.details', 'incidents.incidentType', 'attendances', 'payrolls' => fn($q) => $q->where('start_date', $startDate)])
+        // --- CAMBIO CLAVE: --- Se construye una consulta explícita para obtener todos los empleados
+        // activos durante el período, independientemente de si tienen registros de asistencia o no.
+        $employeesQuery = Employee::query()
+            ->where('is_active', true)
+            ->where('hire_date', '<=', $endDate) // Contratados antes o durante el período
+            ->where(function ($query) use ($startDate) {
+                // Que no hayan sido despedidos antes de que inicie el período
+                $query->whereNull('termination_date')
+                    ->orWhere('termination_date', '>=', $startDate);
+            });
+
+        // Se cargan las relaciones y se aplican los filtros sobre esta nueva consulta base.
+        $employees = $employeesQuery
+            ->with([
+                'branch',
+                'user',
+                'schedules.details',
+                // Se optimiza la carga de relaciones para que solo traiga datos del período actual
+                'incidents' => fn($q) => $q->whereBetween('start_date', [$startDate, $endDate])->with('incidentType'),
+                'attendances' => fn($q) => $q->whereBetween('created_at', [$startDate, $endDate]),
+                'payrolls' => fn($q) => $q->where('start_date', $startDate)
+            ])
             ->when($request->input('branch_id'), fn($q, $id) => $q->where('branch_id', $id))
             ->when($request->input('search'), function ($q, $search) {
                 $q->where(fn($subQ) => $subQ->where('first_name', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%")->orWhere('employee_number', 'like', "%{$search}%"));
             })
             ->get();
 
-        $dateRange = CarbonPeriod::create($startDate, $endDate->copy()->endOfDay());
+        $dateRange = CarbonPeriod::create($startDate, $endDate);
 
-        // La transformación
+        // La transformación sigue funcionando igual gracias al IncidentService
         $employeesData = $employees->map(function ($employee) use ($dateRange) {
             return [
                 'id' => $employee->id,
@@ -79,7 +98,6 @@ class IncidentController extends Controller
                 'avatar_url' => $employee->user->profile_photo_url ?? null,
                 'branch_name' => $employee->branch->name,
                 'comments' => $employee->payrolls->first()?->comments,
-                // Delegamos toda la lógica compleja al Service
                 'daily_data' => $this->incidentService->getDailyDataForEmployee($employee, $dateRange),
             ];
         });
@@ -323,7 +341,7 @@ class IncidentController extends Controller
 
         $reportData = $employees->map(function ($branchEmployees) use ($period, $dateRange, $holidayService) {
             return $branchEmployees->map(function ($employee) use ($period, $dateRange, $holidayService) {
-                
+
                 $unpaidIncidentTypeIds = [1, 4]; // Basado en tu imagen: Falta Injustificada, Permiso sin goce
                 $totalDaysInPeriod = $dateRange->count();
                 $unpaidDays = 0;
@@ -345,7 +363,7 @@ class IncidentController extends Controller
                     foreach ($dateRange as $date) {
                         $dateString = $date->format('Y-m-d');
                         $incidentToday = $employee->incidents->first(fn($inc) => $date->between($inc->start_date, $inc->end_date));
-                        
+
                         if ($incidentToday) {
                             $incidentSummary[] = $incidentToday->incidentType->name . ' (' . $date->isoFormat('dddd, DD MMM') . ')';
                             if (in_array($incidentToday->incident_type_id, $unpaidIncidentTypeIds)) $unpaidDays++;
@@ -355,7 +373,7 @@ class IncidentController extends Controller
                         $isRestDay = !in_array($date->dayOfWeekIso, $workDaysOfWeek);
                         $isHoliday = isset($holidaysInPeriod[$dateString]);
                         $hasAttendance = $employee->attendances->contains(fn($att) => Carbon::parse($att->created_at)->isSameDay($date));
-                        
+
                         $isAutoAbsence = !$isRestDay && !$isHoliday && !$hasAttendance && $date->isPast() && !$date->isToday();
 
                         if ($isAutoAbsence) {
@@ -391,7 +409,7 @@ class IncidentController extends Controller
         ]);
     }
 
-     public function printAttendances(PayrollPeriod $period)
+    public function printAttendances(PayrollPeriod $period)
     {
         $startDate = Carbon::parse($period->start_date);
         $endDate = Carbon::parse($period->end_date);
