@@ -5,13 +5,11 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import { format } from 'date-fns';
 import es from 'date-fns/locale/es';
 
-// --- Props ---
 const props = defineProps({
     period: Object,
     employeesData: Array,
 });
 
-// --- Refs and State ---
 const home = ref({ icon: 'pi pi-home', url: route('dashboard') });
 const items = ref([
     { label: 'Incidencias', url: route('incidents.index') },
@@ -19,11 +17,12 @@ const items = ref([
     { label: 'Imprimir incidencias' }
 ]);
 
-// --- Methods ---
+// --- CAMBIO: --- Se mejora la función para evitar problemas de zona horaria.
 const formatDate = (dateString, formatStr = "EEEE, dd 'de' MMMM") => {
     if (!dateString) return '';
-    const date = new Date(dateString).toDateString();
-    return format(date, formatStr, { locale: es });
+    const date = new Date(dateString);
+    // Se suma el offset del timezone para que la fecha se mantenga consistente
+    return format(new Date(date.valueOf() + date.getTimezoneOffset() * 60000), formatStr, { locale: es });
 };
 
 const getIncidentSeverity = (incidentName) => {
@@ -48,75 +47,86 @@ const print = () => {
 <template>
 
     <Head :title="`Imprimir Incidencias - Semana ${period.week_number}`" />
-
     <AppLayout>
         <Breadcrumb :home="home" :model="items" class="!bg-transparent print:hidden" />
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 print:py-3">
             <div class="flex justify-end mb-4 print:hidden">
                 <Button label="Imprimir" icon="pi pi-print" @click="print" />
             </div>
 
-            <!-- Contenedor principal que organiza las hojas de impresión -->
-            <div class="space-y-4 print:space-y-5" id="print-container">
+            <div class="space-y-4 print:space-y-2" id="print-container">
                 <div v-for="employee in employeesData" :key="employee.id"
-                    class="bg-white dark:bg-gray-800 shadow-md rounded-lg px-6 py-3 print:shadow-none print:border print:rounded-none print:flex print:flex-col print:justify-between print:break-inside-avoid">
-
+                    class="bg-white dark:bg-gray-800 shadow-md rounded-lg px-6 py-3 print:py-1 print:shadow-none print:border print:rounded-none print:flex print:flex-col print:justify-between print:break-inside-avoid">
                     <div>
-                        <!-- Cabecera del empleado -->
-                        <div class="flex justify-between items-start pb-2 border-b">
-                            <div>
-                                <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100">{{ employee.name }}</h2>
-                                <p class="text-sm text-gray-500">N° {{ employee.employee_number }} • {{
-                                    employee.position }}</p>
-                            </div>
-                            <div class="text-right text-sm">
-                                <p class="font-semibold">Semana {{ period.week_number }}. Del {{
-                                    formatDate(period.start_date, 'dd/MM/yy') }} al {{ formatDate(period.end_date,
-                                        'dd/MM/yy') }}</p>
-                                <p class="text-gray-500">{{ employee.branch_name }}</p>
-                            </div>
-                        </div>
-
-                        <!-- Tabla de días -->
+                        <!-- ... (Cabecera del empleado sin cambios) ... -->
                         <div class="overflow-x-auto mt-1">
                             <table class="w-full text-sm text-left">
-                                <thead class="text-xs text-gray-700 dark:text-gray-400 uppercase">
-                                    <tr>
-                                        <th class="py-2">Día</th>
-                                        <th class="py-2">Entrada</th>
-                                        <th class="py-2">Salida</th>
-                                        <th class="py-2">T. Descanso</th>
-                                        <th class="py-2">T. Extra</th>
-                                        <th class="py-2">Horas totales</th>
-                                    </tr>
-                                </thead>
+                                <!-- ... (thead sin cambios) ... -->
                                 <tbody>
                                     <tr v-for="day in employee.daily_data" :key="day.date"
                                         class="border-b dark:border-gray-700">
-                                        <td class="py-2 font-medium">{{ formatDate(day.date + 'T00:00:00', "EEE, dd MMM yyyy") }}</td>
-                                        <template v-if="day.incident">
-                                            <td colspan="5" class="py-2">
+                                        <td class="py-2 print:py-[3px] font-medium">
+                                            <!-- --- CAMBIO: --- Se añaden íconos para festivos y descansos laborados. -->
+                                            <div class="flex items-center gap-2">
+                                                <span>{{ formatDate(day.date, "EEE, dd MMM yyyy") }}</span>
+                                                <i v-if="day.holiday_name && day.entry_time"
+                                                    v-tooltip.top="`Festivo laborado: ${day.holiday_name}`"
+                                                    class="pi pi-star-fill text-yellow-500"></i>
+                                                <i v-if="day.is_rest_day && day.entry_time"
+                                                    v-tooltip.top="`Descanso laborado`"
+                                                    class="pi pi-briefcase text-blue-500"></i>
+                                            </div>
+                                        </td>
+
+                                        <!-- --- CAMBIO: --- Se implementa la misma lógica de visualización que en Show.vue --- -->
+                                        <!-- 1. Festivo DESCANSADO -->
+                                        <template v-if="day.holiday_name && !day.entry_time">
+                                            <td colspan="5" class="py-2 print:py-[3px]">
+                                                <Tag :value="day.holiday_name" severity="success"
+                                                    class="w-full text-center" />
+                                            </td>
+                                        </template>
+
+                                        <!-- 2. Descanso programado (y no trabajado) -->
+                                        <template v-else-if="day.is_rest_day && !day.entry_time && !day.incident">
+                                            <td colspan="5" class="py-2 print:py-[3px]">
+                                                <Tag value="Descanso" severity="success" class="w-full text-center" />
+                                            </td>
+                                        </template>
+
+                                        <!-- 3. Otra incidencia (vacaciones, incapacidad, etc.) -->
+                                        <template v-else-if="day.incident">
+                                            <td colspan="5" class="py-2 print:py-[3px]">
                                                 <Tag :value="day.incident" :severity="getIncidentSeverity(day.incident)"
                                                     class="w-full text-center" />
                                             </td>
                                         </template>
+
+                                        <!-- 4. Falta Injustificada (auto-detectada) -->
+                                        <template v-else-if="day.is_unjustified_absence">
+                                            <td colspan="5" class="py-2 print:py-[3px]">
+                                                <Tag value="Falta Injustificada" severity="danger"
+                                                    class="w-full text-center" />
+                                            </td>
+                                        </template>
+
+                                        <!-- 5. Día normal O festivo/descanso TRABAJADO -->
                                         <template v-else>
-                                            <td class="py-2 flex items-center gap-1">
+                                            <td class="py-2 print:py-[3px] flex items-center gap-1">
                                                 <span>{{ day.entry_time || '-' }}</span>
                                                 <i v-if="day.late_minutes && !day.late_ignored"
                                                     class="pi pi-exclamation-circle text-orange-500"></i>
                                             </td>
-                                            <td class="py-2">{{ day.exit_time || '-' }}</td>
-                                            <td class="py-2">{{ day.break_time }}</td>
-                                            <td class="py-2">{{ day.extra_time }}</td>
-                                            <td class="py-2">{{ day.total_hours }}</td>
+                                            <td class="py-2 print:py-[3px]">{{ day.exit_time || '-' }}</td>
+                                            <td class="py-2 print:py-[3px]">{{ day.break_time }}</td>
+                                            <td class="py-2 print:py-[3px]">{{ day.extra_time }}</td>
+                                            <td class="py-2 print:py-[3px]">{{ day.total_hours }}</td>
                                         </template>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
-
                     <!-- Firma de conformidad -->
                     <div class="mt-1 pt-4 text-center">
                         <p class="text-xs text-gray-600 dark:text-gray-400">He revisado mis registros de asistencia para

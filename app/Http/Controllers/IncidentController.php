@@ -10,6 +10,7 @@ use App\Models\IncidentType;
 use App\Models\Payroll;
 use App\Models\PayrollPeriod;
 use App\Models\VacationLedger;
+use App\Services\HolidayService;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
@@ -23,7 +24,8 @@ class IncidentController extends Controller
 {
     public function __construct(
         protected IncidentService $incidentService,
-        protected VacationService $vacationService
+        protected VacationService $vacationService,
+        protected HolidayService $holidayService
     ) {}
 
     public function index(Request $request)
@@ -148,25 +150,32 @@ class IncidentController extends Controller
             'employee_id' => 'required|exists:employees,id',
             'date' => 'required|date',
         ]);
+
         $date = Carbon::parse($validated['date']);
         $employee = Employee::find($validated['employee_id']);
         $vacationType = IncidentType::where('code', 'VAC')->first();
 
+        // --- CAMBIO CLAVE: --- Primero buscamos la incidencia con ->first() en lugar de ->delete().
         $incident = Incident::where('employee_id', $validated['employee_id'])
             ->whereDate('start_date', '<=', $date)
             ->whereDate('end_date', '>=', $date)
-            ->delete();
+            ->first(); // Esto devuelve el objeto del modelo o null.
 
         if ($incident) {
+            // Ahora $incident es un objeto del modelo y podemos acceder a sus propiedades.
             $isVacation = $vacationType && $incident->incident_type_id == $vacationType->id;
+
+            // Eliminamos la incidencia.
             $incident->delete();
 
+            // Si era una vacación, actualizamos el historial.
             if ($isVacation) {
-                // Borrar el registro del historial y recalcular
                 VacationLedger::where('employee_id', $employee->id)
                     ->where('type', 'taken')
                     ->whereDate('date', $date)
                     ->delete();
+
+                // Asegúrate de que tu controlador tiene acceso al VacationService.
                 $this->vacationService->recalculateLedgerForEmployee($employee);
             }
         }
@@ -293,53 +302,75 @@ class IncidentController extends Controller
         return back();
     }
 
-    public function prePayroll(PayrollPeriod $period)
+    public function prePayroll(PayrollPeriod $period, HolidayService $holidayService)
     {
         $startDate = Carbon::parse($period->start_date);
         $endDate = Carbon::parse($period->end_date);
+        $dateRange = CarbonPeriod::create($startDate, $endDate);
 
-        // Obtener todos los empleados que tuvieron actividad, con sus relaciones
         $employees = Employee::query()
-            ->whereHas('attendances', function ($q) use ($startDate, $endDate) {
-                $q->whereBetween('created_at', [$startDate, $endDate->copy()->endOfDay()]);
-            })
-            ->orWhereHas('incidents', function ($q) use ($startDate, $endDate) {
-                $q->whereDate('start_date', '<=', $endDate)
-                    ->whereDate('end_date', '>=', $startDate);
-            })
+            ->where('is_active', true)
+            ->where('hire_date', '<=', $endDate)
             ->with([
                 'branch',
-                'incidents' => fn($q) => $q->whereDate('start_date', '<=', $endDate)->whereDate('end_date', '>=', $startDate)->with('incidentType'),
+                'incidents' => fn($q) => $q->whereBetween('start_date', [$startDate, $endDate])->with('incidentType'),
+                'attendances' => fn($q) => $q->whereBetween('created_at', [$startDate, $endDate->copy()->endOfDay()]),
+                'schedules.details',
                 'payrolls' => fn($q) => $q->where('start_date', $startDate)
             ])
             ->get()
-            ->groupBy('branch.name'); // Agrupar por nombre de sucursal
+            ->groupBy('branch.name');
 
-        $reportData = $employees->map(function ($branchEmployees) use ($startDate, $endDate) {
-            return $branchEmployees->map(function ($employee) use ($startDate, $endDate) {
-
-                $unpaidIncidentTypes = ['Permiso sin goce', 'Falta injustificada'];
-                $daysToPay = 0;
+        $reportData = $employees->map(function ($branchEmployees) use ($period, $dateRange, $holidayService) {
+            return $branchEmployees->map(function ($employee) use ($period, $dateRange, $holidayService) {
+                
+                $unpaidIncidentTypeIds = [1, 4]; // Basado en tu imagen: Falta Injustificada, Permiso sin goce
+                $totalDaysInPeriod = $dateRange->count();
+                $unpaidDays = 0;
                 $incidentSummary = [];
-                $dateRange = CarbonPeriod::create($startDate, $endDate);
 
-                foreach ($dateRange as $date) {
-                    if ($date->isWeekday()) { // Contar solo días laborables
+                if ($period->status === 'closed') {
+                    // --- LÓGICA PARA PERIODOS CERRADOS: Leer solo de la BD ---
+                    foreach ($employee->incidents as $incident) {
+                        if (in_array($incident->incident_type_id, $unpaidIncidentTypeIds)) {
+                            $unpaidDays += Carbon::parse($incident->start_date)->diffInDays(Carbon::parse($incident->end_date)) + 1;
+                        }
+                        $incidentSummary[] = $incident->incidentType->name . ' (' . Carbon::parse($incident->start_date)->isoFormat('dddd, DD MMM') . ')';
+                    }
+                } else {
+                    // --- LÓGICA PARA PERIODOS ABIERTOS: Cálculo dinámico ---
+                    $holidaysInPeriod = $holidayService->getHolidaysForPeriod($employee, $dateRange);
+                    $workDaysOfWeek = $employee->schedules->flatMap->details->pluck('day_of_week')->toArray();
+
+                    foreach ($dateRange as $date) {
+                        $dateString = $date->format('Y-m-d');
                         $incidentToday = $employee->incidents->first(fn($inc) => $date->between($inc->start_date, $inc->end_date));
-
-                        if ($incidentToday && in_array($incidentToday->incidentType->name, $unpaidIncidentTypes)) {
-                            // No se paga este día
-                        } else {
-                            $daysToPay++;
+                        
+                        if ($incidentToday) {
+                            $incidentSummary[] = $incidentToday->incidentType->name . ' (' . $date->isoFormat('dddd, DD MMM') . ')';
+                            if (in_array($incidentToday->incident_type_id, $unpaidIncidentTypeIds)) $unpaidDays++;
+                            continue;
                         }
 
-                        if ($incidentToday) {
-                            $incidentSummary[] = $incidentToday->incidentType->name . ' (' . $date->isoFormat('dddd, DD [de] MMMM') . ')';
+                        $isRestDay = !in_array($date->dayOfWeekIso, $workDaysOfWeek);
+                        $isHoliday = isset($holidaysInPeriod[$dateString]);
+                        $hasAttendance = $employee->attendances->contains(fn($att) => Carbon::parse($att->created_at)->isSameDay($date));
+                        
+                        $isAutoAbsence = !$isRestDay && !$isHoliday && !$hasAttendance && $date->isPast() && !$date->isToday();
+
+                        if ($isAutoAbsence) {
+                            $incidentSummary[] = 'Falta Injustificada (auto-detectada) (' . $date->isoFormat('dddd, DD MMM') . ')';
+                            $unpaidDays++;
+                        } elseif ($isHoliday && $hasAttendance) {
+                            $incidentSummary[] = 'Día Festivo Laborado (' . $date->isoFormat('dddd, DD MMM') . ')';
+                        } elseif ($isHoliday && !$hasAttendance) {
+                            $incidentSummary[] = 'Día Festivo (' . $date->isoFormat('dddd, DD MMM') . ')';
+                        } elseif ($isRestDay && !$hasAttendance) {
+                            $incidentSummary[] = 'Descanso (' . $date->isoFormat('dddd, DD MMM') . ')';
                         }
                     }
                 }
 
-                // Añadir comentarios si existen
                 if ($employee->payrolls->first()?->comments) {
                     $incidentSummary[] = 'Comentarios: ' . $employee->payrolls->first()->comments;
                 }
@@ -348,7 +379,7 @@ class IncidentController extends Controller
                     'id' => $employee->id,
                     'employee_number' => $employee->employee_number,
                     'name' => $employee->first_name . ' ' . $employee->last_name,
-                    'days_to_pay' => $daysToPay,
+                    'days_to_pay' => $totalDaysInPeriod - $unpaidDays,
                     'incidents' => $incidentSummary,
                 ];
             });
@@ -360,37 +391,28 @@ class IncidentController extends Controller
         ]);
     }
 
-    public function printAttendances(PayrollPeriod $period)
+     public function printAttendances(PayrollPeriod $period)
     {
-        // Esta lógica es idéntica a la del método show() para obtener los datos detallados.
-        $startDate = Carbon::parse($period->start_date)->startOfDay();
-        $endDate = Carbon::parse($period->end_date)->startOfDay();
+        $startDate = Carbon::parse($period->start_date);
+        $endDate = Carbon::parse($period->end_date);
+        $dateRange = CarbonPeriod::create($startDate, $endDate);
 
+        // --- CAMBIO: --- Se optimiza la consulta para ser más eficiente.
         $employees = Employee::query()
-            ->where(function ($query) use ($startDate, $endDate) {
-                $query->whereHas('attendances', function ($q) use ($startDate, $endDate) {
-                    $q->whereBetween('created_at', [$startDate, $endDate->copy()->endOfDay()]);
-                })
-                    ->orWhereHas('incidents', function ($q) use ($startDate, $endDate) {
-                        $q->whereDate('start_date', '<=', $endDate)
-                            ->whereDate('end_date', '>=', $startDate);
-                    });
-            })
+            ->where('is_active', true)
+            ->where('hire_date', '<=', $endDate)
             ->with(['branch', 'user', 'schedules.details', 'incidents.incidentType', 'attendances'])
             ->get();
 
-        $dateRange = CarbonPeriod::create($startDate, $endDate->copy()->endOfDay());
-
+        // El IncidentService ya contiene toda la lógica de cálculo dinámico.
+        // Simplemente lo llamamos para cada empleado.
         $employeesData = $employees->map(function ($employee) use ($dateRange) {
             return [
                 'id' => $employee->id,
                 'name' => $employee->first_name . ' ' . $employee->last_name,
                 'employee_number' => $employee->employee_number,
                 'position' => $employee->position,
-                'avatar_url' => $employee->user->profile_photo_url ?? null,
                 'branch_name' => $employee->branch->name,
-                'comments' => $employee->payrolls->first()?->comments,
-                // Delegamos toda la lógica compleja al Service
                 'daily_data' => $this->incidentService->getDailyDataForEmployee($employee, $dateRange),
             ];
         });

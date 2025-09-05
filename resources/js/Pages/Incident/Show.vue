@@ -200,30 +200,26 @@ const toggleBreakSummary = (event, day) => {
 
 const toggleDayMenu = (event, day, employee) => {
     let menuItems = [];
+    // const isRestedHoliday = day.holiday_name && !day.entry_time;
 
-    // Lógica para "Quitar/Poner retardo"
-    if (day.late_minutes && !day.late_ignored) {
-        menuItems.push({ label: 'Quitar retardo', icon: 'pi pi-check-circle', command: () => toggleLateStatus(day) });
-    }
-    if (day.late_minutes && day.late_ignored) {
-        menuItems.push({ label: 'Poner retardo', icon: 'pi pi-exclamation-circle', command: () => toggleLateStatus(day) });
-    }
-
-    // Lógica para "Modificar registro"
+    // Solo mostrar opciones de retardo y edición si no es un festivo descansado o una incidencia.
     if (!day.incident) {
+        if (day.late_minutes && !day.late_ignored) {
+            menuItems.push({ label: 'Quitar retardo', icon: 'pi pi-check-circle', command: () => toggleLateStatus(day) });
+        }
+        if (day.late_minutes && day.late_ignored) {
+            menuItems.push({ label: 'Poner retardo', icon: 'pi pi-exclamation-circle', command: () => toggleLateStatus(day) });
+        }
         menuItems.push({ label: 'Modificar registro', icon: 'pi pi-pencil', command: () => openAttendanceModal(day, employee) });
     }
-
-    // Lógica para incidencias
+    // Quitar incidencia si existe
     if (day.incident) {
         menuItems.push({ label: 'Quitar incidencia', icon: 'pi pi-times-circle', class: 'p-menuitem-text-danger', command: () => removeIncident(employee, day) });
     }
-
+    // Separador si hay acciones previas
     if (menuItems.length > 0) {
         menuItems.push({ separator: true });
     }
-
-    // Opciones generales
     props.incidentTypes.forEach(type => {
         menuItems.push({ label: type.name, command: () => addIncident(employee, day, type.id) });
     });
@@ -318,7 +314,8 @@ const confirmDeleteBreak = (breakItem) => {
                         <Button icon="pi pi-chevron-left" text rounded :disabled="!navigation.previous_period_id"
                             @click="navigation.previous_period_id && router.get(route('incidents.show', navigation.previous_period_id))" />
                         <div class="text-center">
-                            <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100 m-0">Semana {{ period.week_number
+                            <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100 m-0">Semana {{
+                                period.week_number
                                 }}</h1>
                             <p class="text-sm text-gray-500">{{ period.start_date_formatted_short }} - {{
                                 period.end_date_formatted_full }}</p>
@@ -346,7 +343,8 @@ const confirmDeleteBreak = (breakItem) => {
                 <div v-for="employee in employeesData" :key="employee.id"
                     class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-3">
                     <!-- Cabecera del empleado -->
-                    <div class="flex justify-between items-end p-4 bg-[#f8f8f8] text-[#3f3f3f] rounded-[9px] dark:bg-gray-700 dark:text-gray-100">
+                    <div
+                        class="flex justify-between items-end p-4 bg-[#f8f8f8] text-[#3f3f3f] rounded-[9px] dark:bg-gray-700 dark:text-gray-100">
                         <div class="flex items-center gap-3">
                             <Avatar :image="employee.avatar_url" :label="employee.name[0]" shape="circle" size="large"
                                 class="!bg-[#d9d9d9]" />
@@ -357,7 +355,7 @@ const confirmDeleteBreak = (breakItem) => {
                             </div>
                         </div>
                         <span class="text-sm font-semibold text-gray-600 dark:text-gray-300">{{ employee.branch_name
-                        }}</span>
+                            }}</span>
                     </div>
 
                     <!-- Tabla de días -->
@@ -378,15 +376,51 @@ const confirmDeleteBreak = (breakItem) => {
                             <tbody>
                                 <tr v-for="day in employee.daily_data" :key="day.date"
                                     class="border-b dark:border-gray-700">
-                                    <td class="px-2 py-1 font-medium">{{ day.date_formatted }}</td>
-                                    <!-- Si HAY incidencia -->
-                                    <template v-if="day.incident">
+                                    <td class="px-2 py-1 font-medium">
+                                        <div class="flex items-center gap-2">
+                                            <span>{{ day.date_formatted }}</span>
+                                            <i v-if="day.holiday_name && day.entry_time"
+                                                v-tooltip.top="`Festivo laborado: ${day.holiday_name}`"
+                                                class="pi pi-star-fill text-yellow-500"></i>
+                                            <!-- --- CAMBIO: --- Se añade un ícono para el descanso laborado. -->
+                                            <i v-if="day.is_rest_day && day.entry_time"
+                                                v-tooltip.top="`Descanso laborado`"
+                                                class="pi pi-briefcase text-blue-500"></i>
+                                        </div>
+                                    </td>
+
+                                    <!-- 1. Festivo DESCANSADO -->
+                                    <template v-if="day.holiday_name && !day.entry_time">
+                                        <td colspan="5" class="px-2 py-1">
+                                            <Tag :value="day.holiday_name" severity="success"
+                                                class="w-full text-center" />
+                                        </td>
+                                    </template>
+
+                                    <!-- --- CAMBIO: --- 2. Descanso programado (y no trabajado) -->
+                                    <template v-else-if="day.is_rest_day && !day.entry_time && !day.incident">
+                                        <td colspan="5" class="px-2 py-1">
+                                            <Tag value="Descanso" severity="succsess" class="w-full text-center" />
+                                        </td>
+                                    </template>
+
+                                    <!-- 3. Otra incidencia (falta, vacaciones, etc.) -->
+                                    <template v-else-if="day.incident">
                                         <td colspan="5" class="px-2 py-1">
                                             <Tag :value="day.incident" :severity="getIncidentSeverity(day.incident)"
                                                 class="w-full text-center" />
                                         </td>
                                     </template>
-                                    <!-- Si NO HAY incidencia -->
+
+                                    <!-- --- CAMBIO: --- 4. Falta Injustificada (detectada automáticamente) -->
+                                    <template v-else-if="day.is_unjustified_absence">
+                                        <td colspan="5" class="px-2 py-1">
+                                            <Tag value="Falta Injustificada" severity="danger"
+                                                class="w-full text-center" />
+                                        </td>
+                                    </template>
+
+                                    <!-- 5. Es un día normal O un festivo TRABAJADO -->
                                     <template v-else>
                                         <td class="px-2 py-1">
                                             <span v-if="day.entry_time"
@@ -478,14 +512,16 @@ const confirmDeleteBreak = (breakItem) => {
 
             <Popover ref="op">
                 <div class="w-[300px]">
-                    <h3 class="font-semibold text-[#3f3f3f] text-base rounded-md bg-[#f8f8f8] px-3 m-0">Resumen de descansos</h3>
+                    <h3 class="font-semibold text-[#3f3f3f] text-base rounded-md bg-[#f8f8f8] px-3 m-0">Resumen de
+                        descansos</h3>
                     <div v-if="selectedBreaks.length">
                         <div v-for="(breakItem, index) in selectedBreaks" :key="index"
                             class="group flex justify-between items-center text-sm mb-1 text-gray-600">
                             <span><b>Descanso {{ index + 1 }}:</b> {{ breakItem.start }} - {{ breakItem.end }}</span>
                             <div class="flex items-center w-1/3">
                                 <i class="pi pi-arrow-right !text-xs mx-2"></i>
-                                <span class="font-medium text-[#3f3f3f] flex-shrink-0">{{ breakItem.duration }} min</span>
+                                <span class="font-medium text-[#3f3f3f] flex-shrink-0">{{ breakItem.duration }}
+                                    min</span>
                                 <div class="opacity-0 group-hover:opacity-100 transition-opacity">
                                     <Button icon="pi pi-pencil" text rounded size="small"
                                         @click="openBreakEditModal(breakItem, currentDayForBreakSummary.date)" />
