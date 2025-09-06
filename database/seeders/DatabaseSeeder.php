@@ -15,13 +15,14 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             PermissionSeeder::class,
-            BranchSeeder::class,
-            ScheduleSeeder::class,
+            BonusSeeder::class,
+            // BranchSeeder::class,
+            // ScheduleSeeder::class,
             UserEmployeeSeeder::class,
             IncidentTypeSeeder::class,
-            PayrollPeriodSeeder::class,
-            AttendanceAndIncidentSeeder::class,
-            BonusReportSeeder::class,
+            // PayrollPeriodSeeder::class,
+            // AttendanceAndIncidentSeeder::class,
+            // BonusReportSeeder::class,
         ]);
     }
 }

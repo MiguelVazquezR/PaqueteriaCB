@@ -49,19 +49,19 @@ class UserFactory extends Factory
      *
      * @return $this
      */
-    public function configure()
-    {
-        return $this->afterCreating(function (User $user) {
-            // No crear empleado para el super admin
-            if ($user->email === 'admin@example.com') {
-                return;
-            }
+    // public function configure()
+    // {
+    //     return $this->afterCreating(function (User $user) {
+    //         // No crear empleado para el super admin
+    //         if ($user->email === 'admin@example.com') {
+    //             return;
+    //         }
 
-            // Crear un empleado y asociarlo al usuario recién creado
-            Employee::factory()->create([
-                'user_id' => $user->id,
-                'first_name' => $user->name, // Reutilizamos el nombre
-            ]);
-        });
-    }
+    //         // Crear un empleado y asociarlo al usuario recién creado
+    //         Employee::factory()->create([
+    //             'user_id' => $user->id,
+    //             'first_name' => $user->name, // Reutilizamos el nombre
+    //         ]);
+    //     });
+    // }
 }

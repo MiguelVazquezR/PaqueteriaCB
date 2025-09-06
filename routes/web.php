@@ -1,9 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::redirect('/', 'login');
 
@@ -18,7 +16,6 @@ Route::middleware('auth')->group(function () {
     require __DIR__ . '/web/employees.php';
     require __DIR__ . '/web/holidays.php';
     require __DIR__ . '/web/incidents.php';
-    require __DIR__ . '/web/payrolls.php';
     require __DIR__ . '/web/schedules.php';
     require __DIR__ . '/web/settings.php';
     require __DIR__ . '/web/users.php';

@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
             $table->foreignId('bonus_id')->constrained('bonuses')->cascadeOnDelete();
-            $table->foreignId('payroll_id')->constrained('payrolls')->cascadeOnDelete();
+            $table->foreignId('payroll_periods_id')->constrained('payroll_periods')->cascadeOnDelete();
             $table->decimal('applied_amount', 10, 2);
             $table->timestamps();
         });

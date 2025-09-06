@@ -30,18 +30,7 @@ const description = computed(() => {
     <div class="bg-gray-100 dark:bg-gray-900 flex items-center justify-center min-h-screen font-sans">
         <div class="w-full max-w-md p-8 text-center">
             <div class="mb-6">
-                <!-- Ilustración SVG -->
-                <svg viewBox="0 0 128 128" width="128" height="128" class="mx-auto">
-                    <defs>
-                        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" style="stop-color:rgb(167, 139, 250);stop-opacity:1" />
-                            <stop offset="100%" style="stop-color:rgb(129, 140, 248);stop-opacity:1" />
-                        </linearGradient>
-                    </defs>
-                    <path d="M104.9,48.2H89.3V32.6a4.3,4.3,0,0,0-4.3-4.3H43a4.3,4.3,0,0,0-4.3,4.3V48.2H23.1a4.3,4.3,0,0,0-4.3,4.3V95.1a4.3,4.3,0,0,0,4.3,4.3H104.9a4.3,4.3,0,0,0,4.3-4.3V52.5A4.3,4.3,0,0,0,104.9,48.2ZM43,32.6H85V48.2H43ZM104.9,95.1H23.1V52.5H104.9Z" fill="url(#grad1)" class="opacity-30 dark:opacity-40"/>
-                    <circle cx="64" cy="64" r="30" fill="none" stroke="rgb(239, 68, 68)" stroke-width="6" stroke-linecap="round" />
-                    <line x1="48" y1="48" x2="80" y2="80" stroke="rgb(239, 68, 68)" stroke-width="6" stroke-linecap="round" />
-                </svg>
+                <img src="@/../../public/images/error.png" alt="" draggable="false" class="select-none">                
             </div>
             
             <h1 class="text-6xl font-bold text-primary-600 dark:text-primary-400">{{ status }}</h1>

@@ -55,6 +55,7 @@ class UserController extends Controller implements HasMiddleware
         // Consulta 2: Obtiene todos los USUARIOS que NO tienen un empleado asociado
         $usersOnlyQuery = User::query()
             ->whereDoesntHave('employee')
+            ->whereNotIn('id', [1])
             ->select(
                 'users.id as user_id',
                 'users.email',

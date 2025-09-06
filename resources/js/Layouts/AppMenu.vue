@@ -15,7 +15,6 @@ const model = ref([
             { label: 'Bonos', icon: 'pi pi-fw pi-wallet', to: route('bonuses.index'), routeName: 'bonuses.*', permission: 'ver_bonos' },
             {
                 label: 'Configuraciones', icon: 'pi pi-fw pi-cog',
-                // La visibilidad de este menú padre dependerá de si alguno de sus hijos es visible.
                 items: [
                     {
                         label: 'Roles y permisos',
@@ -26,10 +25,10 @@ const model = ref([
                     },
                     {
                         label: 'Días festivos',
-                        icon: 'pi pi-calendar-plus', // Icono actualizado para mayor claridad
+                        icon: 'pi pi-calendar-plus',
                         to: route('settings.holidays.index'),
                         routeName: 'settings.holidays.*',
-                        permission: 'ver_festivos' // O un permiso más específico si lo tienes
+                        permission: 'ver_festivos'
                     },
                     {
                         label: 'Horarios del personal',

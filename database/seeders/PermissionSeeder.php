@@ -40,20 +40,28 @@ class PermissionSeeder extends Seeder
             ],
             'incidencias' => [
                 'ver_incidencias',
-                'gestionar_incidencias', // Un permiso para crear, editar, eliminar, etc.
-                'aprobar_incidencias',
+                'gestionar_incidencias',
             ],
-            'nominas' => [
-                'ver_nominas',
-                'generar_nominas',
-                'aprobar_nominas',
+            'bonos' => [
+                'ver_bonos',
+                'finalizar_bonos',
             ],
-            'configuraciones' => [
-                'gestionar_roles_permisos',
-                'gestionar_configuraciones_generales',
+            'roles' => [
+                'ver_roles_permisos',
+                'crear_roles',
+                'editar_roles',
+                'eliminar_roles',
             ],
-            'reportes' => [
-                'ver_reportes',
+            'permisos' => [
+                'crear_permisos',
+                'editar_permisos',
+                'eliminar_permisos',
+            ],
+            'festivos' => [
+                'ver_festivos',
+                'crear_festivos',
+                'editar_festivos',
+                'eliminar_festivos',
             ],
         ];
 
@@ -67,21 +75,7 @@ class PermissionSeeder extends Seeder
         // --- Crear Roles y Asignar Permisos ---
 
         // Rol de Administrador (acceso total)
-        $adminRole = Role::create(['name' => 'Administrador']);
+        $adminRole = Role::create(['name' => 'Super administrador']);
         $adminRole->givePermissionTo(Permission::all());
-
-        // Rol de Encargado de Sucursal
-        $branchManagerRole = Role::create(['name' => 'Encargado de sucursal']);
-        $branchManagerRole->givePermissionTo([
-            'ver_usuarios',
-            'editar_usuarios',
-            'ver_incidencias',
-            'gestionar_incidencias',
-            'ver_reportes',
-        ]);
-        
-        // Rol de Colaborador (permisos mínimos)
-        $collaboratorRole = Role::create(['name' => 'Colaborador']);
-        // Este rol podría tener permisos para ver sus propias incidencias, por ejemplo.
     }
 }
