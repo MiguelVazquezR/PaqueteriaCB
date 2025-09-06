@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { format } from 'date-fns';
 import es from 'date-fns/locale/es';
@@ -28,6 +28,10 @@ const periodFormatted = computed(() => {
     const date = new Date(props.report.period);
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 });
+
+const hasPermission = (permission) => {
+    return usePage().props.auth.permissions?.includes(permission) ?? false;
+};
 
 const finalizeReport = () => {
     confirm.require({
@@ -89,7 +93,7 @@ const finalizeOptions = ref([
                         <Link :href="route('bonuses.print', periodFormatted)" target="_blank">
                         <Button label="Imprimir Reporte" icon="pi pi-print" outlined />
                         </Link>
-                        <SplitButton v-if="report.status === 'draft'" label="Finalizar y Aprobar"
+                        <SplitButton v-if="report.status === 'draft' && hasPermission('finalizar_bonos')" label="Finalizar y Aprobar"
                             icon="pi pi-check-circle" @click="finalizeReport" :model="finalizeOptions" />
                     </div>
                 </div>

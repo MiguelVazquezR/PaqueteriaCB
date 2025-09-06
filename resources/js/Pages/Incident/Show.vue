@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, computed } from 'vue';
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { debounce } from 'lodash';
 import { format } from 'date-fns';
@@ -93,7 +93,10 @@ const formatDate = (dateString, formatStr = "EEEE, dd 'de' MMMM") => {
     return format(dateString, formatStr, { locale: es });
 };
 
-// --- Métodos para Comentarios ---
+const hasPermission = (permission) => {
+    return usePage().props.auth.permissions?.includes(permission) ?? false;
+};
+
 const openCommentModal = (employee) => {
     currentEmployeeForComment.value = employee;
     commentText.value = employee.comments;
@@ -447,7 +450,7 @@ const confirmDeleteBreak = (breakItem) => {
                                         <td class="px-2 py-1">{{ day.total_hours }}</td>
                                     </template>
                                     <!-- Columna 7: Opciones (Siempre visible) -->
-                                    <td class="px-2 py-1 text-center">
+                                    <td v-if="hasPermission('gestionar_incidencias')" class="px-2 py-1 text-center">
                                         <Button @click="toggleDayMenu($event, day, employee)" icon="pi pi-ellipsis-v"
                                             text rounded />
                                     </td>

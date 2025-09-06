@@ -22,14 +22,14 @@ const model = ref([
                         icon: 'pi pi-key',
                         to: route('settings.roles-permissions.index'),
                         routeName: 'settings.roles-permissions.*',
-                        permission: 'gestionar_roles_permisos'
+                        permission: 'ver_roles_permisos'
                     },
                     {
                         label: 'Días festivos',
                         icon: 'pi pi-calendar-plus', // Icono actualizado para mayor claridad
                         to: route('settings.holidays.index'),
                         routeName: 'settings.holidays.*',
-                        permission: 'gestionar_configuraciones_generales' // O un permiso más específico si lo tienes
+                        permission: 'ver_festivos' // O un permiso más específico si lo tienes
                     },
                     {
                         label: 'Horarios del personal',

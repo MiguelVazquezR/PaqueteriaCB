@@ -4,7 +4,6 @@ import { Head, useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import { useConfirm } from "primevue/useconfirm";
-import { useToast } from "primevue/usetoast";
 import { PrimeIcons } from '@primevue/core/api';
 
 // --- Props ---
@@ -16,7 +15,6 @@ const props = defineProps({
 
 // --- Refs and State ---
 const confirm = useConfirm();
-const toast = useToast();
 const home = ref({ icon: 'pi pi-home', url: route('dashboard') });
 const items = ref([
     { label: 'Roles y permisos' }
@@ -66,6 +64,10 @@ const savePermissions = () => {
             toast.add({ severity: 'success', summary: 'Éxito', detail: 'Permisos actualizados', life: 3000 });
         }
     });
+};
+
+const hasPermission = (permission) => {
+    return usePage().props.auth.permissions?.includes(permission) ?? false;
 };
 
 const openNewPermissionModal = () => {
@@ -121,9 +123,6 @@ const confirmDeletePermission = (permission) => {
                 }
             });
         },
-        // reject: () => {
-        //     toast.add({ severity: 'error', summary: 'Rechazado', detail: 'No se eliminó el permiso', life: 3000 });
-        // }
     });
 };
 
@@ -156,11 +155,6 @@ const confirmDeleteRole = (role) => {
             });
         }
     });
-};
-
-// Función auxiliar para verificar permisos
-const hasPermission = (permission) => {
-    return usePage().props.auth.permissions?.includes(permission) ?? false;
 };
 
 </script>
@@ -211,7 +205,7 @@ const hasPermission = (permission) => {
                             <p class="text-sm text-gray-500 m-0">Este rol tiene {{ selectedRole?.permissions_count }} de
                                 {{ totalPermissions }} permisos</p>
                             <Button @click="confirmDeleteRole(selectedRole)" size="small"
-                                v-if="hasPermission('gestionar_roles_permisos')" label="Eliminar rol" icon="pi pi-trash"
+                                v-if="hasPermission('eliminar_roles')" label="Eliminar rol" icon="pi pi-trash"
                                 variant="outlined" />
                         </div>
                     </div>
@@ -236,9 +230,9 @@ const hasPermission = (permission) => {
                                 </label>
                             </div>
                             <div class="flex items-center">
-                                <Button icon="pi pi-pencil" text rounded size="small"
+                                <Button v-if="hasPermission('editar_permisos')" icon="pi pi-pencil" text rounded size="small"
                                     @click="openEditPermissionModal(permission)" />
-                                <Button icon="pi pi-trash" text rounded size="small" severity="danger"
+                                <Button v-if="hasPermission('eliminar_permisos')" icon="pi pi-trash" text rounded size="small" severity="danger"
                                     @click="confirmDeletePermission(permission)" />
                             </div>
                         </div>
@@ -247,7 +241,7 @@ const hasPermission = (permission) => {
 
                 <template #footer>
                     <div class="w-full">
-                        <div class="border-t pt-4">
+                        <div v-if="hasPermission('crear_permisos')" class="border-t pt-4">
                             <button @click="openNewPermissionModal"
                                 class="w-full text-left p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                                 <i class="pi pi-plus-circle"></i>
@@ -258,7 +252,7 @@ const hasPermission = (permission) => {
                         </div>
                         <div class="flex justify-end gap-2 mt-4">
                             <Button label="Cancelar" severity="secondary" @click="drawerVisible = false" />
-                            <Button label="Guardar permisos" @click="savePermissions"
+                            <Button v-if="hasPermission('editar_roles')" label="Guardar permisos" @click="savePermissions"
                                 :loading="permissionsForm.processing" />
                         </div>
                     </div>

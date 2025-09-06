@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { Head, useForm, router } from '@inertiajs/vue3';
+import { Head, useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { useConfirm } from "primevue/useconfirm";
 import { debounce } from 'lodash';
@@ -59,6 +59,10 @@ watch(search, debounce((value) => {
 }, 300));
 
 // --- Methods ---
+const hasPermission = (permission) => {
+    return usePage().props.auth.permissions?.includes(permission) ?? false;
+};
+
 const openCreateModal = () => {
     isEditing.value = false;
     form.reset();
@@ -165,7 +169,7 @@ const formatAppliedTo = (holiday) => {
 
             <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg">
                 <div class="flex justify-end items-center p-6 pb-0">
-                    <Button label="Crear día festivo" icon="pi pi-plus" @click="openCreateModal" />
+                    <Button v-if="hasPermission('crear_festivos')" label="Crear día festivo" icon="pi pi-plus" @click="openCreateModal" />
                 </div>
                 <div class="flex flex-col sm:flex-row justify-between items-center p-6 border-b">
                     <h1 class="text-2xl font-bold">Días festivos</h1>
@@ -197,8 +201,8 @@ const formatAppliedTo = (holiday) => {
                         <Column>
                             <template #body="{ data }">
                                 <div class="flex gap-2">
-                                    <Button icon="pi pi-pencil" text rounded @click="openEditModal(data)" />
-                                    <Button icon="pi pi-trash" text rounded severity="danger"
+                                    <Button v-if="hasPermission('editar_festivos')" icon="pi pi-pencil" text rounded @click="openEditModal(data)" />
+                                    <Button v-if="hasPermission('eliminar_festivos')" icon="pi pi-trash" text rounded severity="danger"
                                         @click="confirmDelete(data)" />
                                 </div>
                             </template>

@@ -152,7 +152,7 @@ const toggleSchedulePopover = (event, branch) => {
                             </template>
                         </Column>
 
-                        <Column bodyStyle="text-align:center; overflow:visible">
+                        <Column v-if="hasPermission('editar_sucursales') || hasPermission('eliminar_sucursales')" bodyStyle="text-align:center; overflow:visible">
                             <template #body="slotProps">
                                 <Button @click="toggleMenu($event, slotProps.data)" icon="pi pi-ellipsis-v" text rounded aria-haspopup="true" />
                             </template>
