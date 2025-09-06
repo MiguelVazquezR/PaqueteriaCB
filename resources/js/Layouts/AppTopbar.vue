@@ -71,14 +71,14 @@ const capture = () => {
 };
 
 // Usamos un watcher para reaccionar a los cambios en los mensajes flash de Jetstream.
-watch(() => page.props.flash, (flash) => {
-    if (flash && flash.success) {
-        toast.add({ severity: 'success', summary: 'Éxito', detail: flash.success, life: 5000 });
-    }
-    if (flash && flash.error) {
-        toast.add({ severity: 'error', summary: 'Error', detail: flash.error, life: 5000 });
-    }
-}, { deep: true });
+// watch(() => page.props.flash, (flash) => {
+//     if (flash && flash.success) {
+//         toast.add({ severity: 'success', summary: 'Éxito', detail: flash.success, life: 5000 });
+//     }
+//     if (flash && flash.error) {
+//         toast.add({ severity: 'error', summary: 'Error', detail: flash.error, life: 5000 });
+//     }
+// }, { deep: true });
 
 
 const attendanceStatus = computed(() => {
@@ -186,7 +186,7 @@ const attendanceStatus = computed(() => {
                 <p class="text-sm text-gray-500">Estado actual</p>
                 <div class="flex items-center justify-center gap-2 mt-2">
                     <p class="font-semibold">{{ attendanceStatus.message }}</p>
-                    <i :class="attendanceStatus.icon"></i>
+                    <i :class="attendanceStatus.icon" class="mb-3"></i>
                 </div>
             </div>
             <div class="flex gap-2">

@@ -1,26 +1,59 @@
 <script setup>
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import { useLayout } from '@/Layouts/composables/layout';
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import AppFooter from './AppFooter.vue';
 import AppSidebar from './AppSidebar.vue';
 import AppTopbar from './AppTopbar.vue';
+import { useToast } from 'primevue/usetoast';
 
 defineProps({
     title: String,
 });
 
-const showingNavigationDropdown = ref(false);
-
 const { layoutConfig, layoutState, isSidebarActive } = useLayout();
-
 const outsideClickListener = ref(null);
+
+// --- CAMBIO: --- Se inicializa el servicio de Toast y se accede a las props de la página.
+const toast = useToast();
 
 watch(isSidebarActive, (newVal) => {
     if (newVal) {
         bindOutsideClickListener();
     } else {
         unbindOutsideClickListener();
+    }
+});
+
+let removeFlashListener = null;
+
+const handleFlashMessages = (event) => {
+    const flash = event.detail.page.props.flash;
+    if (flash) {
+        if (flash.success) {
+            toast.add({ severity: 'success', summary: 'Éxito', detail: flash.success, life: 5000 });
+        }
+        if (flash.error) {
+            toast.add({ severity: 'error', summary: 'Error', detail: flash.error, life: 5000 });
+        }
+        if (flash.warning) {
+            toast.add({ severity: 'warn', summary: 'Advertencia', detail: flash.warning, life: 5000 });
+        }
+        if (flash.info) {
+            toast.add({ severity: 'info', summary: 'Información', detail: flash.info, life: 5000 });
+        }
+    }
+};
+
+onMounted(() => {
+    // --- CAMBIO: --- Se guarda la función de cancelación que devuelve router.on().
+    removeFlashListener = router.on('success', handleFlashMessages);
+});
+
+onUnmounted(() => {
+    // --- CAMBIO: --- Se llama a la función de cancelación si existe.
+    if (removeFlashListener) {
+        removeFlashListener();
     }
 });
 

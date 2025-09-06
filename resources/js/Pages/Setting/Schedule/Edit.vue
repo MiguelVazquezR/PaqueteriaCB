@@ -4,13 +4,11 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import { PrimeIcons } from '@primevue/core/api';
-import { useToast } from "primevue/usetoast";
 import { format } from 'date-fns'; // Se importa format
 
 const props = defineProps({ schedule: Object, branches: Array, errors: Object });
 const home = ref({ icon: 'pi pi-home', url: route('dashboard') });
 const items = ref([{ label: 'Horarios', url: route('settings.schedules.index'), icon: PrimeIcons.CLOCK }, { label: 'Editar horario' }]);
-const Toast = useToast();
 
 const selectedBranchesSchedules = computed(() => {
     return props.branches.filter(branch => form.branch_ids.includes(branch.id));
@@ -70,11 +68,7 @@ const submit = () => {
             end_time: day.is_active && day.end_time ? format(new Date(day.end_time), 'HH:mm') : null,
             meal_minutes: day.is_active ? day.meal_minutes : 0,
         }))
-    })).put(route('settings.schedules.update', props.schedule.id), {
-        onSuccess: () => {
-            Toast.add({ severity: 'success', summary: 'Éxito', detail: 'Horario actualizado.', life: 3000 });
-        },
-    });
+    })).put(route('settings.schedules.update', props.schedule.id));
 };
 </script>
 

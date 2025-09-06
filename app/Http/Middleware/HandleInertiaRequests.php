@@ -39,7 +39,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => function () use ($request) {
                 $user = $request->user();
                 $employee = $user?->load('employee')->employee;
-                
+
                 return [
                     'user' => $request->user(),
                     // Si el usuario está logueado, obtenemos todos sus permisos y los enviamos como un array.
@@ -54,6 +54,8 @@ class HandleInertiaRequests extends Middleware
                 return [
                     'success' => $request->session()->get('success'),
                     'error' => $request->session()->get('error'),
+                    'warning' => $request->session()->get('warning'),
+                    'info' => $request->session()->get('info'),
                 ];
             },
         ]);

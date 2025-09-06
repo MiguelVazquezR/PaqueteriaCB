@@ -3,10 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
-use App\Models\Schedule;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class BranchController extends Controller
@@ -54,7 +51,7 @@ class BranchController extends Controller
         return Inertia::render('Branch/Create');
     }
 
-     public function store(Request $request)
+    public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -106,7 +103,7 @@ class BranchController extends Controller
         return redirect()->route('branches.index')->with('success', 'Sucursal actualizada con éxito.');
     }
 
-     public function show(Branch $branch)
+    public function show(Branch $branch)
     {
         // Cargar la sucursal con el número de empleados asociados
         $branch->loadCount('employees');

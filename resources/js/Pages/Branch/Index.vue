@@ -3,7 +3,6 @@ import { ref, watch } from 'vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { debounce } from 'lodash';
-// --- CAMBIO: --- Importar 'format' para la hora.
 import { format } from 'date-fns';
 import { useConfirm } from 'primevue';
 

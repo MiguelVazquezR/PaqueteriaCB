@@ -8,8 +8,7 @@ import FacialIcon from '@/Components/Icons/FacialIcon.vue';
 import { PrimeIcons } from '@primevue/core/api';
 import { format } from 'date-fns';
 
-
-// --- Props ---
+// --- Props --
 const props = defineProps({
     branches: Array,
     roles: Array,

@@ -4,11 +4,9 @@ import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import { PrimeIcons } from '@primevue/core/api';
-import { useToast } from 'primevue';
 import { format } from 'date-fns'; // Necesario para la transformación de datos
 
 // --- Refs and State ---
-const toast = useToast();
 const home = ref({ icon: 'pi pi-home', url: route('dashboard') });
 const items = ref([
     { label: 'Sucursales', url: route('branches.index'), icon: PrimeIcons.BUILDING },
@@ -61,19 +59,9 @@ form.transform((data) => {
 
 
 // --- Methods ---
-function showSuccess() {
-    toast.add({ severity: 'success', summary: 'Éxito', detail: 'Sucursal creada correctamente', life: 3000 });
-}
-
-// El método submit ahora usa el 'form' transformado automáticamente.
 const submit = () => {
-    form.post(route('branches.store'), {
-        onSuccess: () => {
-            showSuccess();
-        },
-    });
+    form.post(route('branches.store'));
 };
-
 </script>
 
 <template>

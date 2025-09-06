@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
+use Illuminate\Support\Str; 
 
 class ScheduleController extends Controller
 {
@@ -54,7 +55,7 @@ class ScheduleController extends Controller
             }
         });
 
-        return redirect()->route('settings.schedules.index');
+        return redirect()->route('settings.schedules.index')->with('success', 'Horario creado.');
     }
 
     public function edit(Schedule $schedule)
@@ -85,13 +86,38 @@ class ScheduleController extends Controller
             $schedule->branches()->sync($validated['branch_ids'] ?? []);
         });
 
-        return redirect()->route('settings.schedules.index');
+        return redirect()->route('settings.schedules.index')->with('success', 'Horario actualizado.');
     }
 
     public function destroy(Schedule $schedule)
     {
+        // 1. Contar cuántos empleados tienen este horario asignado.
+        $employeeCount = $schedule->employees()->count();
+
+        // 2. Si el conteo es mayor a cero, prevenir la eliminación.
+        if ($employeeCount > 0) {
+            // (Opcional pero recomendado) Obtener algunos nombres para que el mensaje sea más útil.
+            $employeeNames = $schedule->employees()
+                ->take(3) // Tomar hasta 3 nombres como ejemplo
+                ->get()
+                ->pluck('first_name')
+                ->implode(', ');
+
+            $message = "Este horario no puede ser eliminado porque está asignado a {$employeeCount} " . Str::plural('empleado', $employeeCount) . ".";
+
+            if ($employeeNames) {
+                $message .= " (Ej: {$employeeNames}). Por favor, reasigna a estos empleados a otro horario antes de intentarlo de nuevo.";
+            }
+
+            // Se devuelve un mensaje de error que será capturado por el Toast en AppLayout.vue
+            return back()->with('error', $message);
+        }
+
+        // 3. Si no hay empleados, proceder con la eliminación.
         $schedule->delete();
-        return back()->with('success', 'Horario eliminado.');
+
+        // Se usa redirect() en lugar de back() para asegurar que la lista se refresque correctamente.
+        return redirect()->route('settings.schedules.index')->with('success', 'Horario eliminado correctamente.');
     }
 
     private function validateSchedule(Request $request, $ignoreId = null): array

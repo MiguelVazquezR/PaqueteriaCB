@@ -4,7 +4,6 @@ import { Head, useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import { useConfirm } from "primevue/useconfirm";
-import { PrimeIcons } from '@primevue/core/api';
 
 // --- Props ---
 const props = defineProps({
@@ -59,10 +58,6 @@ const openPermissionsDrawer = (role) => {
 const savePermissions = () => {
     permissionsForm.put(route('settings.roles-permissions.updatePermissions', selectedRole.value.id), {
         preserveScroll: true,
-        onSuccess: () => {
-            drawerVisible.value = false;
-            toast.add({ severity: 'success', summary: 'Éxito', detail: 'Permisos actualizados', life: 3000 });
-        }
     });
 };
 
@@ -118,9 +113,6 @@ const confirmDeletePermission = (permission) => {
         accept: () => {
             router.delete(route('settings.permissions.destroy', permission.id), {
                 preserveScroll: true,
-                onSuccess: () => {
-                    toast.add({ severity: 'success', summary: 'Confirmado', detail: 'Permiso eliminado', life: 3000 });
-                }
             });
         },
     });
