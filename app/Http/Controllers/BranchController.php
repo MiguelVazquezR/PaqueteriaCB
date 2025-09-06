@@ -4,10 +4,22 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 use Inertia\Inertia;
 
-class BranchController extends Controller
+class BranchController extends Controller implements HasMiddleware
 {
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('can:ver_sucursales', only: ['index', 'show']),
+            new Middleware('can:crear_sucursales', only: ['create', 'store']),
+            new Middleware('can:editar_sucursales', only: ['edit', 'update']),
+            new Middleware('can:eliminar_sucursales', only: ['destroy']),
+        ];
+    }
+    
     public function index(Request $request)
     {
         $query = Branch::query();

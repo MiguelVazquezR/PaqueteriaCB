@@ -2,16 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
 use App\Models\BonusReport;
-use App\Models\Employee;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 
-class BonusController extends Controller
+class BonusController extends Controller implements HasMiddleware
 {
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('can:ver_bonos', only: ['index', 'show', 'print']),
+            new Middleware('can:finalizar_bonos', only: ['finalize', 'recalculate']),
+        ];
+    }
+
     public function index()
     {
         // Obtenemos los últimos 12 meses donde hubo reportes o se espera que haya.
@@ -32,20 +40,20 @@ class BonusController extends Controller
     {
         $periodDate = Carbon::createFromFormat('Y-m', $period)->startOfMonth();
 
-        // Eager load details y la relación con el empleado para eficiencia
+        // --- CAMBIO: --- Se añade 'details.bonus' al eager loading.
         $report = BonusReport::where('period', $periodDate)
-            ->with('details.employee')
+            ->with('details.employee', 'details.bonus') // Cargar la relación del bono
             ->firstOrFail();
 
-        // --- CAMBIO CLAVE: --- Se procesan los datos directamente desde los detalles del reporte.
         $employeeBonuses = $report->details
-            ->groupBy('employee_id') // Agrupar por empleado
+            ->groupBy('employee_id')
             ->map(function ($detailsForEmployee) {
                 $employee = $detailsForEmployee->first()->employee;
-                if (!$employee) return null; // Omitir si el empleado fue eliminado
+                if (!$employee) return null;
 
-                $punctualityDetail = $detailsForEmployee->firstWhere('bonus_name', 'Bono de Puntualidad');
-                $attendanceDetail = $detailsForEmployee->firstWhere('bonus_name', 'Bono de Asistencia');
+                // --- CAMBIO CLAVE: --- Se filtra usando la relación: 'bonus.name'.
+                $punctualityDetail = $detailsForEmployee->firstWhere('bonus.name', 'Bono de Puntualidad');
+                $attendanceDetail = $detailsForEmployee->firstWhere('bonus.name', 'Bono de Asistencia');
 
                 return [
                     'id' => $employee->id,
@@ -53,12 +61,13 @@ class BonusController extends Controller
                     'employee_number' => $employee->employee_number,
                     'punctuality_earned' => $punctualityDetail ? $punctualityDetail->calculated_amount > 0 : false,
                     'attendance_earned' => $attendanceDetail ? $attendanceDetail->calculated_amount > 0 : false,
+                    // Esta lógica ahora funcionará porque $punctualityDetail y $attendanceDetail se encontrarán correctamente.
                     'late_minutes' => $punctualityDetail->calculation_details['late_minutes'] ?? 0,
                     'unjustified_absences' => $attendanceDetail->calculation_details['unjustified_absences'] ?? 0,
                 ];
             })
-            ->filter() // Eliminar nulos si algún empleado fue borrado
-            ->values(); // Resetear las llaves del array
+            ->filter()
+            ->values();
 
         return Inertia::render('Bonus/Show', [
             'report' => $report,
@@ -70,19 +79,20 @@ class BonusController extends Controller
     {
         $periodDate = Carbon::createFromFormat('Y-m', $period)->startOfMonth();
 
+        // --- CAMBIO: --- Se añade 'details.bonus' al eager loading.
         $report = BonusReport::where('period', $periodDate)
-            ->with('details.employee.branch')
+            ->with('details.employee.branch', 'details.bonus') // Cargar la relación del bono
             ->firstOrFail();
 
-        // --- CAMBIO CLAVE: --- La lógica ahora es idéntica a la del método 'show' para consistencia.
         $employeeData = $report->details
             ->groupBy('employee_id')
             ->map(function ($detailsForEmployee) {
                 $employee = $detailsForEmployee->first()->employee;
                 if (!$employee) return null;
 
-                $punctualityDetail = $detailsForEmployee->firstWhere('bonus_name', 'Bono de Puntualidad');
-                $attendanceDetail = $detailsForEmployee->firstWhere('bonus_name', 'Bono de Asistencia');
+                // --- CAMBIO CLAVE: --- Se filtra usando la relación: 'bonus.name'.
+                $punctualityDetail = $detailsForEmployee->firstWhere('bonus.name', 'Bono de Puntualidad');
+                $attendanceDetail = $detailsForEmployee->firstWhere('bonus.name', 'Bono de Asistencia');
 
                 return [
                     'employee_id' => $employee->id,

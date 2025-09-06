@@ -6,13 +6,25 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Schedule;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Illuminate\Support\Str; 
 
-class ScheduleController extends Controller
+class ScheduleController extends Controller implements HasMiddleware
 {
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('can:ver_horarios', only: ['index']),
+            new Middleware('can:crear_horarios', only: ['create', 'store']),
+            new Middleware('can:editar_horarios', only: ['edit', 'update']),
+            new Middleware('can:eliminar_horarios', only: ['destroy']),
+        ];
+    }
+
     public function index(Request $request)
     {
         $query = Schedule::with('branches:id,name');

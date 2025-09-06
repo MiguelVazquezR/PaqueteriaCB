@@ -15,10 +15,22 @@ use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
 use App\Services\RekognitionService;
 use App\Models\Schedule;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\Log;
 
-class UserController extends Controller
+class UserController extends Controller implements HasMiddleware
 {
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('can:ver_usuarios', only: ['index', 'show']),
+            new Middleware('can:crear_usuarios', only: ['create', 'store']),
+            new Middleware('can:editar_usuarios', only: ['edit', 'update']),
+            new Middleware('can:eliminar_usuarios', only: ['destroy']),
+        ];
+    }
+
     public function index(Request $request)
     {
         // Consulta 1: Obtiene todos los EMPLEADOS y sus datos de usuario (si existen)

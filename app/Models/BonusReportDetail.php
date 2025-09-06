@@ -13,7 +13,7 @@ class BonusReportDetail extends Model
     protected $fillable = [
         'bonus_report_id',
         'employee_id',
-        'bonus_name',
+        'bonus_id',
         'calculated_amount',
         'calculation_details',
     ];
@@ -36,5 +36,10 @@ class BonusReportDetail extends Model
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
+    }
+
+    public function bonus(): BelongsTo
+    {
+        return $this->belongsTo(Bonus::class);
     }
 }

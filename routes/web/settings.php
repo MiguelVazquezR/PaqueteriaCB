@@ -10,11 +10,11 @@ Route::prefix('settings')->name('settings.')->group(function () {
     Route::resource('roles-permissions', RolePermissionController::class)
         ->parameters(['roles-permissions' => 'role'])
         ->except(['show', 'edit', 'update']);
-    Route::put('roles-permissions/{role}/permissions', [RolePermissionController::class, 'updatePermissions'])->name('roles-permissions.updatePermissions');
-    // ->middleware('can:gestionar_roles_permisos'); // El permiso se aplica a todas las rutas de este resource.;
+    Route::put('roles-permissions/{role}/permissions', [RolePermissionController::class, 'updatePermissions'])->name('roles-permissions.updatePermissions')
+        ->middleware('can:ver_roles_permisos'); // El permiso se aplica a todas las rutas de este resource.
     Route::resource('holidays', HolidayController::class)->except(['show']);
     Route::resource('schedules', ScheduleController::class)->except(['show']);
     Route::resource('permissions', PermissionController::class)
-        ->only(['store', 'update', 'destroy']);
-    // ->middleware('can:gestionar_roles_permisos');
+        ->only(['store', 'update', 'destroy'])
+        ->middleware('can:ver_roles_permisos');
 });

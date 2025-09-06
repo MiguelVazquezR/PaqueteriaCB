@@ -27,7 +27,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('bonus_report_id')->constrained('bonus_reports')->onDelete('cascade');
             $table->foreignId('employee_id')->constrained('employees');
-            $table->string('bonus_name'); // Ej: "Bono de Puntualidad"
+            $table->foreignId('bonus_id')->constrained('bonuses');
             $table->decimal('calculated_amount', 10, 2)->default(0);
             $table->json('calculation_details')->nullable(); // Para auditoría, ej: { "lates": 1, "absences": 0 }
             $table->timestamps();

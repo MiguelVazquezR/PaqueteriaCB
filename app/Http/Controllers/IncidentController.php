@@ -15,18 +15,27 @@ use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use App\Services\IncidentService;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use App\Services\VacationService;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 
-class IncidentController extends Controller
+class IncidentController extends Controller implements HasMiddleware
 {
     public function __construct(
         protected IncidentService $incidentService,
         protected VacationService $vacationService,
         protected HolidayService $holidayService
     ) {}
+
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('can:ver_incidencias', only: ['index', 'show']),
+            new Middleware('can:gestionar_incidencias', except: ['index', 'show']),
+        ];
+    }
 
     public function index(Request $request)
     {

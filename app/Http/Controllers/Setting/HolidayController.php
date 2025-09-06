@@ -6,11 +6,23 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\HolidayRule;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
-class HolidayController extends Controller
+class HolidayController extends Controller implements HasMiddleware
 {
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('can:ver_festivos', only: ['index', 'show']),
+            new Middleware('can:crear_festivos', only: ['store']),
+            new Middleware('can:editar_festivos', only: ['update']),
+            new Middleware('can:eliminar_festivos', only: ['destroy']),
+        ];
+    }
+
     public function index(Request $request)
     {
         $query = HolidayRule::with('branches:id,name');

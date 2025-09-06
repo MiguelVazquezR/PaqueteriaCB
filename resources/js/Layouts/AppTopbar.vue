@@ -210,7 +210,7 @@ const attendanceStatus = computed(() => {
         </template>
     </Dialog>
 
-    <!-- --- CAMBIO: --- Nuevo menú lateral (Sidebar) para la vista móvil. -->
+    <!-- menú lateral (Sidebar) para la vista móvil. -->
     <Drawer v-model:visible="mobileUserMenuVisible" position="right" class="w-full sm:w-80">
         <div class="p-4">
             <div class="flex flex-col items-center">
