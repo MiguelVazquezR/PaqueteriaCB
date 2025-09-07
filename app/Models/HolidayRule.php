@@ -19,4 +19,9 @@ class HolidayRule extends Model
     protected $casts = [
         'rule_definition' => 'array',
     ];
+
+    public function branches()
+    {
+        return $this->belongsToMany(Branch::class, 'branch_holiday_rule');
+    }
 }

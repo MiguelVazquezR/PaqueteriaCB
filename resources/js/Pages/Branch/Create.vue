@@ -36,7 +36,7 @@ const form = useForm({
         timezone: 'America/Mexico_City',
     },
     // --- CAMBIO: --- El horario ahora se inicializa con objetos Date.
-    schedule: {
+    business_hours: {
         1: { day_name: 'Lunes a viernes', is_active: true, start_time: createTimeObject('09:00'), end_time: createTimeObject('18:00') },
         6: { day_name: 'Sábado', is_active: true, start_time: createTimeObject('09:00'), end_time: createTimeObject('13:00') },
         7: { day_name: 'Domingo', is_active: false, start_time: null, end_time: null },
@@ -48,8 +48,8 @@ form.transform((data) => {
     // Se crea una copia profunda para no alterar el estado del formulario en la UI.
     const transformedData = JSON.parse(JSON.stringify(data));
 
-    for (const key in transformedData.schedule) {
-        const day = transformedData.schedule[key];
+    for (const key in transformedData.business_hours) {
+        const day = transformedData.business_hours[key];
         // Si el día está activo y tiene hora, se formatea. Si no, se envía null.
         day.start_time = day.is_active && day.start_time ? format(new Date(day.start_time), 'HH:mm') : null;
         day.end_time = day.is_active && day.end_time ? format(new Date(day.end_time), 'HH:mm') : null;
@@ -130,7 +130,7 @@ const submit = () => {
                             <span>Cierre</span>
                             <span class="text-center">Día no laborable</span>
                         </div>
-                        <div v-for="(day, key) in form.schedule" :key="key"
+                        <div v-for="(day, key) in form.business_hours" :key="key"
                             class="grid grid-cols-2 md:grid-cols-4 gap-4 items-center px-2">
                             <span class="font-medium col-span-2 md:col-span-1">{{ day.day_name }}</span>
                             <DatePicker v-model="day.start_time" :disabled="!day.is_active" showIcon fluid

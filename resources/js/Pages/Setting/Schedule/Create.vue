@@ -127,7 +127,7 @@ const submit = () => {
                                 <span>Salida</span>
                                 <span>Comida (min)</span>
                                 <span>Total Hrs</span>
-                                <span class="text-center">Descanso</span>
+                                <span class="text-center">Día laborable</span>
                             </div>
                             <div v-for="(day, index) in form.details" :key="day.day_of_week"
                                 class="grid grid-cols-6 gap-3 items-center">

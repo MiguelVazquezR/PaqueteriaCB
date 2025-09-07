@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Employee extends Model
 {
@@ -58,6 +61,25 @@ class Employee extends Model
         });
     }
 
+    /**
+     * Scope a query to only include employees active within a given date range.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  \Carbon\Carbon  $startDate
+     * @param  \Carbon\Carbon  $endDate
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeActiveDuring(Builder $query, Carbon $startDate, Carbon $endDate): Builder
+    {
+        return $query->where('is_active', true)
+            ->where('hire_date', '<=', $endDate) // Contratados antes o durante el período
+            ->where(function ($subQuery) use ($startDate) {
+                // Que no hayan sido despedidos antes de que inicie el período
+                $subQuery->whereNull('termination_date')
+                    ->orWhere('termination_date', '>=', $startDate);
+            });
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -85,15 +107,28 @@ class Employee extends Model
         return $this->hasMany(Incident::class);
     }
 
-    public function payrolls()
-    {
-        return $this->hasMany(Payroll::class);
-    }
-
     public function bonuses()
     {
         return $this->belongsToMany(Bonus::class, 'employee_bonus')
             ->withPivot('payroll_id', 'applied_amount')
             ->withTimestamps();
+    }
+
+    /**
+     * Get the vacation ledger history for the employee.
+     */
+    public function vacationLedger(): HasMany
+    {
+        // Un empleado tiene muchos registros en el historial de vacaciones.
+        // Se ordena por fecha y luego por ID para mantener un orden consistente.
+        return $this->hasMany(VacationLedger::class)->orderBy('date')->orderBy('id');
+    }
+
+    /**
+     * Get all period-specific notes for the employee.
+     */
+    public function periodNotes()
+    {
+        return $this->hasMany(EmployeePeriodNote::class);
     }
 }

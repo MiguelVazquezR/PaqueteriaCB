@@ -13,7 +13,7 @@ const props = defineProps({
     branches: Array,
     roles: Array,
     schedules: Array,
-    errors: Object, // Errores de validación
+    errors: Object,
 });
 
 // --- Refs and State ---
@@ -22,17 +22,12 @@ const items = ref([
     { label: 'Usuarios', url: route('users.index'), icon: PrimeIcons.USER },
     { label: 'Crear usuario' }
 ]);
-const op = ref(); // Referencia para el Popover
+const op = ref();
 const scheduleOp = ref();
 const fileUploadRef = ref(null);
 const imagePreview = ref(null);
 const relationships = [
-    'Madre/Padre',
-    'Hermano/Hermana',
-    'Esposo/Esposa',
-    'Tío/Tía',
-    'Abuelo/Abuela',
-    'Otro',
+    'Madre/Padre', 'Hermano/Hermana', 'Esposo/Esposa', 'Tío/Tía', 'Abuelo/Abuela', 'Otro',
 ];
 
 const form = useForm({
@@ -42,10 +37,9 @@ const form = useForm({
     phone: '',
     birth_date: null,
     address: '',
-
     // Info Laboral
     employee_number: '',
-    hire_date: null,
+    hire_date: new Date(),
     branch_id: null,
     position: '',
     curp: '',
@@ -56,18 +50,15 @@ const form = useForm({
     is_active: true,
     termination_date: null,
     termination_reason: '',
-
     // Contacto Emergencia
     emergency_contact_name: '',
     emergency_contact_phone: '',
     emergency_contact_relationship: '',
-
     // Acceso al sistema
     create_user_account: true,
     email: '',
     password: '',
     role_id: null,
-
     // Imagen
     facial_image: null,
 });
@@ -79,26 +70,50 @@ const selectedRolePermissions = computed(() => {
     return selected ? selected.permissions : [];
 });
 
-// ✨ Computed property para el horario seleccionado
 const selectedSchedule = computed(() => {
     if (!form.schedule_id) return null;
     return props.schedules.find(s => s.id === form.schedule_id);
 });
 
 // --- Methods ---
+/**
+ * ✨ CAMBIO: Se reemplaza URL.createObjectURL por FileReader.
+ * Esto es mucho más robusto y funciona en entornos de producción con
+ * políticas de seguridad de contenido (CSP) estrictas.
+ */
 const onFileSelect = (event) => {
     const file = event.files[0];
     if (file) {
         form.facial_image = file;
-        imagePreview.value = URL.createObjectURL(file);
+        
+        // 1. Crear una instancia de FileReader.
+        const reader = new FileReader();
+
+        // 2. Definir qué hacer cuando el archivo se haya leído.
+        reader.onload = (e) => {
+            // El resultado es una cadena de texto en base64 (Data URL).
+            imagePreview.value = e.target.result;
+        };
+        
+        // 3. Iniciar la lectura del archivo.
+        reader.readAsDataURL(file);
     }
 };
 
-// Method to clear the selected image
-const clearImage = () => {
+/**
+ * ✨ MEJORA: Se pasa el callback `clearCallback` del template al método.
+ * Esto asegura que el estado interno del componente FileUpload también se limpie.
+ */
+const clearImage = (clearCallback) => {
     form.facial_image = null;
     imagePreview.value = null;
-    // ✨ Usamos la referencia para limpiar el estado interno del componente
+    
+    // Si se proporciona el callback del componente, se llama.
+    if (clearCallback) {
+        clearCallback();
+    }
+    
+    // También se puede usar la referencia como fallback.
     if (fileUploadRef.value) {
         fileUploadRef.value.clear();
     }
@@ -107,6 +122,7 @@ const clearImage = () => {
 const submit = () => {
     form.post(route('users.store'), {
         onSuccess: () => {
+            // Manejar éxito
         },
         onError: (err) => {
             console.log(err)
@@ -137,7 +153,6 @@ const formatTime = (timeString) => {
 const getDayFromSchedule = (dayOfWeek) => {
     return selectedSchedule.value?.details.find(d => d.day_of_week === dayOfWeek);
 };
-
 </script>
 
 <template>
@@ -163,18 +178,19 @@ const getDayFromSchedule = (dayOfWeek) => {
                             <InputText id="first_name" v-model="form.first_name" class="w-full"
                                 :invalid="!!form.errors.first_name" placeholder="Ej. Juan" />
                             <small v-if="form.errors.first_name" class="text-red-500 mt-1">{{ form.errors.first_name
-                            }}</small>
+                                }}</small>
                         </div>
                         <div>
                             <InputLabel for="last_name" value="Apellidos*" />
                             <InputText id="last_name" v-model="form.last_name" class="w-full"
                                 :invalid="!!form.errors.last_name" placeholder="Ej. Pérez García" />
                             <small v-if="form.errors.last_name" class="text-red-500 mt-1">{{ form.errors.last_name
-                            }}</small>
+                                }}</small>
                         </div>
                         <div>
                             <InputLabel for="phone" value="Teléfono" />
-                            <InputText id="phone" v-model="form.phone" class="w-full" placeholder="Ej. 33 49 38 26 08" />
+                            <InputText id="phone" v-model="form.phone" class="w-full"
+                                placeholder="Ej. 33 49 38 26 08" />
                         </div>
                         <div>
                             <InputLabel for="birth_date" value="Fecha de nacimiento" />
@@ -183,7 +199,8 @@ const getDayFromSchedule = (dayOfWeek) => {
                         </div>
                         <div class="md:col-span-2">
                             <InputLabel for="address" value="Domicilio" />
-                            <InputText id="address" v-model="form.address" class="w-full" placeholder="Ej. Calle Manuel Acuña  #87, Colonia Bugambilias..." />
+                            <InputText id="address" v-model="form.address" class="w-full"
+                                placeholder="Ej. Calle Manuel Acuña  #87, Colonia Bugambilias..." />
                         </div>
                     </div>
                     <Divider />
@@ -204,9 +221,10 @@ const getDayFromSchedule = (dayOfWeek) => {
                         <div>
                             <InputLabel for="hire_date" value="Fecha de contratación*" />
                             <DatePicker id="hire_date" v-model="form.hire_date" dateFormat="dd/mm/yy" showIcon fluid
-                                iconDisplay="input" :invalid="!!form.errors.hire_date" class="w-full" placeholder="dd/mm/aaaa" />
+                                iconDisplay="input" :invalid="!!form.errors.hire_date" class="w-full"
+                                placeholder="dd/mm/aaaa" />
                             <small v-if="form.errors.hire_date" class="text-red-500 mt-1">{{ form.errors.hire_date
-                            }}</small>
+                                }}</small>
                         </div>
                         <div>
                             <InputLabel for="branch_id" value="Sucursal asignada*" />
@@ -214,19 +232,20 @@ const getDayFromSchedule = (dayOfWeek) => {
                                 optionValue="id" size="large" placeholder="Selecciona la sucursal"
                                 :invalid="!!form.errors.branch_id" class="w-full" />
                             <small v-if="form.errors.branch_id" class="text-red-500 mt-1">{{ form.errors.branch_id
-                            }}</small>
+                                }}</small>
                         </div>
                         <div>
                             <InputLabel for="position" value="Puesto*" />
                             <InputText id="position" v-model="form.position" class="w-full"
                                 :invalid="!!form.errors.position" placeholder="Ej. Gerente" />
                             <small v-if="form.errors.position" class="text-red-500 mt-1">{{ form.errors.position
-                            }}</small>
+                                }}</small>
                         </div>
                         <div>
                             <div class="flex items-center gap-2">
                                 <InputLabel for="schedule_id" value="Horario*" />
-                                <i class="pi pi-book cursor-pointer" style="font-size: 12px;" @click="toggleSchedulePopover"></i>
+                                <i class="pi pi-book cursor-pointer" style="font-size: 12px;"
+                                    @click="toggleSchedulePopover"></i>
                             </div>
                             <Select id="schedule_id" v-model="form.schedule_id" :options="schedules" optionLabel="name"
                                 optionValue="id" placeholder="Selecciona un horario" size="large" class="w-full"
@@ -249,9 +268,10 @@ const getDayFromSchedule = (dayOfWeek) => {
                         <div>
                             <InputLabel for="base_salary" value="Salario base mensual*" />
                             <InputNumber id="base_salary" v-model="form.base_salary" mode="currency" currency="MXN"
-                                locale="es-MX" class="w-full" :invalid="!!form.errors.base_salary" placeholder="Ej. 15,000.00" />
+                                locale="es-MX" class="w-full" :invalid="!!form.errors.base_salary"
+                                placeholder="Ej. 15,000.00" />
                             <small v-if="form.errors.base_salary" class="text-red-500 mt-1">{{ form.errors.base_salary
-                            }}</small>
+                                }}</small>
                         </div>
                         <div>
                             <InputLabel for="is_active" value="Estatus*" />
@@ -273,7 +293,8 @@ const getDayFromSchedule = (dayOfWeek) => {
                             <div>
                                 <InputLabel for="termination_reason" value="Motivo de baja*" />
                                 <InputText id="termination_reason" v-model="form.termination_reason" class="w-full"
-                                    :invalid="!!form.errors.termination_reason" placeholder="Escribe el motivo de baja" />
+                                    :invalid="!!form.errors.termination_reason"
+                                    placeholder="Escribe el motivo de baja" />
                                 <small v-if="form.errors.termination_reason" class="text-red-500 mt-1">{{
                                     form.errors.termination_reason }}</small>
                             </div>
@@ -289,8 +310,8 @@ const getDayFromSchedule = (dayOfWeek) => {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                             <InputLabel for="emergency_contact_name" value="Nombre completo" />
-                            <InputText id="emergency_contact_name" v-model="form.emergency_contact_name"
-                                class="w-full" placeholder="Ej. María Eugenia Sanchez" />
+                            <InputText id="emergency_contact_name" v-model="form.emergency_contact_name" class="w-full"
+                                placeholder="Ej. María Eugenia Sanchez" />
                         </div>
                         <div>
                             <InputLabel for="emergency_contact_phone" value="Teléfono" />
@@ -314,13 +335,11 @@ const getDayFromSchedule = (dayOfWeek) => {
                     </div>
                     <FileUpload ref="fileUploadRef" name="facial_image" @select="onFileSelect" :showUploadButton="false"
                         :showCancelButton="false" accept="image/*" :maxFileSize="1024000">
-                        <!-- Usamos el slot #header para obtener los callbacks pero no renderizamos nada -->
-                        <template #header="{ chooseCallback, clearCallback, files }">
-                            <Button label="Subir imagen" icon="pi pi-upload" outlined @click="chooseCallback" />
+                        <template #header="{ chooseCallback }">
+                             <Button label="Subir imagen" icon="pi pi-upload" outlined @click="chooseCallback" />
                         </template>
-                        <!-- El slot #content ahora maneja ambos estados: con y sin imagen -->
-                        <template #content="{ chooseCallback, clearCallback, files }">
-                            <div v-if="files.length > 0"
+                        <template #content="{ clearCallback }">
+                            <div v-if="imagePreview"
                                 class="flex flex-col items-center justify-center gap-4 p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
                                 <img :src="imagePreview" alt="Vista previa"
                                     class="w-48 h-48 rounded-full object-cover" />
@@ -336,7 +355,7 @@ const getDayFromSchedule = (dayOfWeek) => {
                         </template>
                     </FileUpload>
                     <small v-if="form.errors.facial_image" class="text-red-500 mt-1">{{ form.errors.facial_image
-                    }}</small>
+                        }}</small>
                     <Divider />
 
                     <!-- === ACCESO AL SISTEMA === -->
@@ -344,24 +363,19 @@ const getDayFromSchedule = (dayOfWeek) => {
                         <i class="pi pi-key text-gray-600 dark:text-gray-400 mt-3"></i>
                         <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Acceso al sistema</h2>
                     </div>
-                    <!-- <div class="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700">
-                        <InputLabel for="create_user_account"
-                            value="Habilitar para que este usuario pueda iniciar sesión." />
-                        <ToggleSwitch id="create_user_account" disabled v-model="form.create_user_account" />
-                    </div> -->
                     <div v-if="form.create_user_account" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                         <div>
                             <InputLabel for="email" value="Correo electrónico*" />
                             <InputText id="email" v-model="form.email" type="email" class="w-full"
-                                :invalid="!!form.errors.email" />
+                                :invalid="!!form.errors.email" autocomplete="off" />
                             <small v-if="form.errors.email" class="text-red-500 mt-1">{{ form.errors.email }}</small>
                         </div>
                         <div>
                             <InputLabel for="password" value="Contraseña*" />
                             <Password id="password" v-model="form.password" :feedback="false" toggleMask class="w-full"
-                                inputClass="w-full" :invalid="!!form.errors.password" />
+                                inputClass="w-full" :invalid="!!form.errors.password" autocomplete="new-password" />
                             <small v-if="form.errors.password" class="text-red-500 mt-1">{{ form.errors.password
-                            }}</small>
+                                }}</small>
                         </div>
                         <div class="md:col-span-2">
                             <div class="flex items-center gap-2">
@@ -373,7 +387,7 @@ const getDayFromSchedule = (dayOfWeek) => {
                                 optionValue="id" placeholder="Selecciona un rol" class="w-full"
                                 :invalid="!!form.errors.role_id" />
                             <small v-if="form.errors.role_id" class="text-red-500 mt-1">{{ form.errors.role_id
-                            }}</small>
+                                }}</small>
                         </div>
                     </div>
 
@@ -389,7 +403,7 @@ const getDayFromSchedule = (dayOfWeek) => {
         </div>
     </AppLayout>
 
-    <!-- ✨ Popover para Permisos ✨ -->
+    <!-- Popovers -->
     <Popover ref="op">
         <div class="p-2 w-72">
             <h3 class="font-bold mb-2 text-lg">Detalles del rol</h3>
@@ -407,8 +421,7 @@ const getDayFromSchedule = (dayOfWeek) => {
             </div>
         </div>
     </Popover>
-
-    <!-- ✨ POPOVER PARA DETALLES DEL HORARIO ✨ -->
+    
     <Popover ref="scheduleOp">
         <div class="p-4 w-96">
             <h3 class="font-bold text-lg mb-2">Detalles del horario</h3>
