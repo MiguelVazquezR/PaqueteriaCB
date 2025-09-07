@@ -29,16 +29,18 @@ const userStatusMap = {
 const menuConfig = [
     {
         label: 'Ver detalles', icon: 'pi pi-eye',
-        action: (user) => router.get(route('users.show', user.user_id)),
+        // AJUSTADO: Se usa `user.id` que ahora viene del recurso unificado.
+        action: (user) => router.get(route('users.show', user.id)),
     },
     {
         label: 'Editar', icon: 'pi pi-pencil', permission: 'editar_usuarios',
-        action: (user) => router.get(route('users.edit', user.user_id)),
+        // AJUSTADO: Se usa `user.id`.
+        action: (user) => router.get(route('users.edit', user.id)),
     },
 ];
 
 const toggleMenu = (event, user) => {
-    if (user.user_id) {
+    if (user.id) {
         generateAndShowMenu(event, user, menuConfig);
     }
 };
@@ -67,16 +69,41 @@ const toggleMenu = (event, user) => {
                         <Column field="avatar_url" header="Imagen">
                             <template #body="slotProps"><img :src="slotProps.data.avatar_url" :alt="slotProps.data.name" class="size-12 rounded-full object-cover" /></template>
                         </Column>
-                        <Column field="employee_number" header="N° empleado" class="w-[140px]" sortable></Column>
+                        <!-- AJUSTES EN LAS COLUMNAS PARA LEER LA NUEVA ESTRUCTURA ANIDADA -->
+                        <Column field="employee_number" header="N° empleado" class="w-[140px]" sortable>
+                            <template #body="{ data }">
+                                {{ data.employee?.employee_number }}
+                            </template>
+                        </Column>
                         <Column field="name" header="Nombre" sortable></Column>
-                        <Column field="position" header="Puesto" sortable></Column>
-                        <Column field="branch" header="Sucursal" sortable></Column>
-                        <Column field="phone" header="Teléfono"></Column>
-                        <Column field="role" header="Rol"></Column>
+                        <Column field="position" header="Puesto" sortable>
+                             <template #body="{ data }">
+                                {{ data.employee?.position ?? 'Usuario del Sistema' }}
+                            </template>
+                        </Column>
+                        <Column field="branch" header="Sucursal" sortable>
+                             <template #body="{ data }">
+                                {{ data.employee?.branch?.name }}
+                            </template>
+                        </Column>
+                        <Column field="phone" header="Teléfono">
+                             <template #body="{ data }">
+                                {{ data.employee?.phone }}
+                            </template>
+                        </Column>
+                        <Column field="roles" header="Rol">
+                            <template #body="{ data }">
+                                <!-- Capitaliza el primer rol encontrado -->
+                                <span v-if="data.roles && data.roles.length > 0" class="capitalize">
+                                   {{ data.roles[0] }}
+                                </span>
+                            </template>
+                        </Column>
                         <Column field="status" header="Estatus" sortable>
                             <template #body="slotProps">
-                                <Tag :value="getStatusInfo(slotProps.data.status, userStatusMap).label"
-                                     :severity="getStatusInfo(slotProps.data.status, userStatusMap).severity"
+                                <!-- Si no hay empleado, se asume que el usuario está activo -->
+                                <Tag :value="getStatusInfo(slotProps.data.employee?.is_active ?? true, userStatusMap).label"
+                                     :severity="getStatusInfo(slotProps.data.employee?.is_active ?? true, userStatusMap).severity"
                                      class="rounded-full px-3 py-1 text-xs font-semibold" />
                             </template>
                         </Column>

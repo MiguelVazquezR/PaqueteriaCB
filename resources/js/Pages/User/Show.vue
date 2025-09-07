@@ -21,8 +21,6 @@ const items = ref([
     { label: 'Detalles de usuario' }
 ]);
 const isInitialBalanceModalVisible = ref(false);
-
-// ✨ State para el nuevo modal de transacciones
 const transactionModalVisible = ref(false);
 const transactionType = ref(''); // 'taken', 'earned', 'adjustment'
 const descriptionOp = ref(); // Ref para el popover de descripción
@@ -39,21 +37,21 @@ const transactionForm = useForm({
 });
 
 // --- Computed Properties ---
-// ✨ Los computed usan el `vacation_balance` del empleado para ser más eficientes
 const availableVacationDays = computed(() => {
     return props.user.employee?.vacation_balance || 0;
 });
 
 const fullName = computed(() => {
-    return `${props.user.employee?.first_name || ''} ${props.user.employee?.last_name || ''}`.trim();
+    // Usa el `name` del nivel raíz que ya viene formateado desde el UserResource
+    return props.user.name;
 });
 
 const employeeSchedule = computed(() => {
-    // Asumimos que el empleado tiene un solo horario activo
-    return props.user.employee?.schedules[0] || null;
+    return (props.user.employee?.schedules && props.user.employee.schedules.length > 0)
+        ? props.user.employee.schedules[0]
+        : null;
 });
 
-// ✨ Computed property para calcular el total de horas semanales
 const totalWeeklyHours = computed(() => {
     if (!employeeSchedule.value || !employeeSchedule.value.details) {
         return 0;
@@ -66,13 +64,17 @@ const totalWeeklyHours = computed(() => {
 const positionAndBranch = computed(() => {
     const position = props.user.employee?.position;
     const branch = props.user.employee?.branch?.name;
-    return [position, branch].filter(Boolean).join(' - ');
+    // Si no hay empleado, muestra el primer rol del usuario.
+    const fallbackRole = props.user.roles && props.user.roles.length > 0
+        ? props.user.roles[0].charAt(0).toUpperCase() + props.user.roles[0].slice(1)
+        : 'Usuario del Sistema';
+
+    return [position, branch].filter(Boolean).join(' - ') || fallbackRole;
 });
 
 const takenVacationDays = computed(() => {
-    if (!props.user.vacation_history) return 0;
-    // Sumar solo los días que son negativos (vacaciones tomadas)
-    return props.user.vacation_history.reduce((total, item) => {
+    if (!props.user.employee?.vacation_history) return 0;
+    return props.user.employee?.vacation_history.reduce((total, item) => {
         return item.type === 'taken' ? total + Math.abs(item.days) : total;
     }, 0);
 });
@@ -88,7 +90,6 @@ const translateVacationType = (type) => {
     return translations[type] || type;
 };
 
-// ✨ método para guardar el saldo inicial
 const saveInitialBalance = () => {
     initialBalanceForm.post(route('vacations.updateInitialBalance', props.user.employee.id), {
         onSuccess: () => {
@@ -97,7 +98,6 @@ const saveInitialBalance = () => {
     });
 };
 
-// ✨ --- Métodos para el Modal de Transacciones ---
 const openTransactionModal = (type) => {
     transactionType.value = type;
     transactionForm.reset();
@@ -114,10 +114,8 @@ const saveTransaction = () => {
         },
         onError: (err) => console.log(err),
     });
-
 };
 
-//  método para mostrar el popover con la descripción
 const toggleDescription = (event, description) => {
     selectedDescription.value = description;
     descriptionOp.value.toggle(event);
@@ -143,7 +141,6 @@ const hasPermission = (permission) => {
     return usePage().props.auth.permissions?.includes(permission) ?? false;
 };
 
-// métodos para mostrar el popover del horario
 const toggleSchedulePopover = (event) => {
     scheduleOp.value.toggle(event);
 };
@@ -166,7 +163,7 @@ const calculateDayTotalHours = (detail) => {
     }
     const start = new Date(`1970-01-01T${detail.start_time}`);
     const end = new Date(`1970-01-01T${detail.end_time}`);
-    const diffHours = (end - start) / (1000 * 60 * 60); // diferencia en horas
+    const diffHours = (end - start) / (1000 * 60 * 60);
     const mealHours = (detail.meal_minutes || 0) / 60;
     return diffHours - mealHours;
 };
@@ -174,9 +171,7 @@ const calculateDayTotalHours = (detail) => {
 </script>
 
 <template>
-
     <Head :title="`Detalles de ${fullName}`" />
-
     <AppLayout>
         <Breadcrumb :home="home" :model="items" class="!bg-transparent" />
         <div class="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -185,34 +180,43 @@ const calculateDayTotalHours = (detail) => {
             <div class="relative">
                 <div class="bg-black dark:bg-neutral-900 h-32 md:h-48 shadow-md rounded-3xl overflow-hidden mb-8">
                     <span class="text-white text-6xl absolute bottom-4 right-7 font-bold opacity-40">CB</span>
-                    <img :src="user.profile_photo_url" :alt="user.name"
-                        class="size-44 rounded-full object-cover absolute left-9 -bottom-7 border-8 border-[#d9d9d9] dark:border-gray-800" />
+                    <img :src="user.avatar_url" :alt="user.name"
+                         class="size-44 bg-[#D8BBFC] rounded-full object-cover absolute left-9 -bottom-7 border-8 border-[#d9d9d9] dark:border-gray-800" />
                 </div>
             </div>
-            <div class="py-4">
-                <div class="flex flex-col sm:flex-row items-start">
-                    <div class="sm:ml-6 mt-4 sm:mt-0 text-center sm:text-left">
-                        <h1 class="text-lg font-bold text-gray-900 dark:text-gray-100">{{ fullName }}</h1>
+            <div>
+                <div class="flex flex-row items-center justify-between lg:items-start mb-3">
+                    <div class="sm:ml-[200px] lg:ml-3 mt-4 sm:mt-0 text-center sm:text-left">
+                        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 m-0">{{ fullName }}</h1>
                         <p class="text-gray-600 dark:text-gray-400">{{ positionAndBranch }}</p>
-                        <Tag v-if="user.employee?.is_active" value="Activo" severity="success" />
-                        <Tag v-else value="Inactivo" severity="danger" />
+                         <Tag v-if="user.employee" :value="user.employee.is_active ? 'Activo' : 'Inactivo'"
+                             :severity="user.employee.is_active ? 'success' : 'danger'" />
+                        <!-- Si no es empleado, se considera activo como usuario del sistema -->
+                        <Tag v-else value="Activo" severity="success" />
                     </div>
                     <div class="sm:ml-auto">
+                        <!-- CORREGIDO: Usar user.id del recurso raíz -->
                         <Link :href="route('users.edit', user.id)">
-                        <Button v-if="hasPermission('editar_usuarios')" label="Editar perfil" icon="pi pi-pencil" outlined />
+                            <Button v-if="hasPermission('editar_usuarios')" label="Editar perfil" icon="pi pi-pencil" outlined />
                         </Link>
                     </div>
                 </div>
             </div>
 
-            <!-- === GRID DE INFORMACIÓN === -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Si el usuario no es un empleado, muestra un mensaje -->
+            <div v-if="!user.employee" class="text-center p-8 bg-white dark:bg-neutral-900 shadow-md rounded-lg">
+                <i class="pi pi-user text-5xl text-gray-400"></i>
+                <h2 class="mt-4 text-xl font-semibold text-gray-800 dark:text-gray-200">Usuario del Sistema</h2>
+                <p class="text-gray-500 dark:text-gray-400 mt-2">Este usuario no tiene un perfil de empleado asociado.</p>
+            </div>
+
+            <!-- === GRID DE INFORMACIÓN (Solo si es empleado) === -->
+            <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Columna Izquierda -->
                 <div class="lg:col-span-2 space-y-6">
                     <!-- Card: Información Laboral -->
                     <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-2">
-                        <h2
-                            class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-neutral-700 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
+                         <h2 class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-neutral-700 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
                             <i class="pi pi-briefcase"></i>
                             <span>Información laboral</span>
                         </h2>
@@ -224,8 +228,8 @@ const calculateDayTotalHours = (detail) => {
                                     class="font-medium text-gray-700 dark:text-gray-300">{{
                                         formatDate(user.employee?.hire_date) }}</span></div>
                             <div class="flex py-2"><span class="text-gray-500 w-[40%]">Sucursal</span><span
-                                    class="font-medium text-gray-700 dark:text-gray-300">{{ user.employee?.branch?.name
-                                        || '-' }}</span></div>
+                                    class="font-medium text-gray-700 dark:text-gray-300">{{
+                                        user.employee?.branch?.name || '-' }}</span></div>
                             <div class="flex py-2"><span class="text-gray-500 w-[40%]">Puesto</span><span
                                     class="font-medium text-gray-700 dark:text-gray-300">{{ user.employee?.position ||
                                         '-' }}</span></div>
@@ -233,12 +237,9 @@ const calculateDayTotalHours = (detail) => {
                                     class="font-medium text-gray-700 dark:text-gray-300 flex items-center">
                                     {{ employeeSchedule?.name || 'No asignado' }}
                                     <i v-if="employeeSchedule" class="pi pi-book ml-2 cursor-pointer"
-                                        @click="toggleSchedulePopover"></i>
+                                       @click="toggleSchedulePopover"></i>
                                 </span></div>
-                            <div class="flex py-2"><span class="text-gray-500 w-[40%]">Correo empresarial</span><span
-                                    class="font-medium text-gray-700 dark:text-gray-300">{{ user.email || '-' }}</span>
-                            </div>
-                            <div class="flex py-2"><span class="text-gray-500 w-[40%]">CURP</span><span
+                             <div class="flex py-2"><span class="text-gray-500 w-[40%]">CURP</span><span
                                     class="font-medium text-gray-700 dark:text-gray-300">{{ user.employee?.curp || '-'
                                     }}</span></div>
                             <div class="flex py-2"><span class="text-gray-500 w-[40%]">RFC</span><span
@@ -251,8 +252,6 @@ const calculateDayTotalHours = (detail) => {
                                     class="font-medium text-gray-700 dark:text-gray-300">${{ new
                                         Intl.NumberFormat('es-MX').format(user.employee?.base_salary) }} mensuales</span>
                             </div>
-                            <div class="flex py-2"><span class="text-gray-500 w-[40%]">Rol de usuario</span><span
-                                    class="font-medium text-gray-700 dark:text-gray-300">Empleado</span></div>
                         </div>
                     </div>
 
@@ -266,12 +265,12 @@ const calculateDayTotalHours = (detail) => {
                                     empleado.</p>
                             </div>
                             <div class="flex gap-2 mt-4 sm:mt-0">
-                                <SplitButton v-if="hasPermission('vacaciones_usuarios')" label="Ajustar saldo inicial" :model="transactionMenuItems"
-                                    @click="isInitialBalanceModalVisible = true" severity="secondary" size="small"
-                                    outlined />
+                                <SplitButton v-if="hasPermission('vacaciones_usuarios')" label="Ajustar saldo inicial"
+                                     :model="transactionMenuItems" @click="isInitialBalanceModalVisible = true"
+                                     severity="secondary" size="small" outlined />
                             </div>
                         </div>
-                        <DataTable :value="user.vacation_history" scrollable scrollHeight="250px" size="small">
+                        <DataTable :value="user.employee?.vacation_history" scrollable scrollHeight="250px" size="small">
                             <Column field="date" header="Fecha">
                                 <template #body="{ data }">
                                     {{ formatDate(data.date) }}
@@ -282,8 +281,8 @@ const calculateDayTotalHours = (detail) => {
                                     <div class="flex items-center">
                                         <span>{{ translateVacationType(data.type) }}</span>
                                         <i v-if="data.description"
-                                            class="pi pi-info-circle ml-3 cursor-pointer text-gray-400"
-                                            @click="toggleDescription($event, data.description)"></i>
+                                           class="pi pi-info-circle ml-3 cursor-pointer text-gray-400"
+                                           @click="toggleDescription($event, data.description)"></i>
                                     </div>
                                 </template>
                             </Column>
@@ -303,8 +302,7 @@ const calculateDayTotalHours = (detail) => {
                 <div class="space-y-6">
                     <!-- Card: Información Personal -->
                     <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-2">
-                        <h2
-                            class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-neutral-700 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
+                        <h2 class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-neutral-700 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
                             <i class="pi pi-user"></i>
                             <span>Información personal</span>
                         </h2>
@@ -323,8 +321,7 @@ const calculateDayTotalHours = (detail) => {
                     </div>
                     <!-- Card: Contacto de emergencia -->
                     <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-2">
-                        <h2
-                            class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-neutral-700 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
+                        <h2 class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-neutral-700 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
                             <CruzIcon class="size-4" />
                             <span>Contacto de emergencia</span>
                         </h2>
@@ -344,8 +341,7 @@ const calculateDayTotalHours = (detail) => {
                     </div>
                     <!-- Card: Gestión de vacaciones -->
                     <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-2">
-                        <h2
-                            class="font-semibold flex items-center justify-between text-base bg-[#f8f8f8] dark:bg-neutral-700 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
+                        <h2 class="font-semibold flex items-center justify-between text-base bg-[#f8f8f8] dark:bg-neutral-700 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
                             <div class="flex items-center space-x-3">
                                 <AvionIcon class="size-4" />
                                 <span>Gestión de vacaciones</span>
@@ -362,10 +358,13 @@ const calculateDayTotalHours = (detail) => {
                     </div>
                 </div>
             </div>
+        </div>
 
+        <!-- MODALES (Solo se renderizan si hay un empleado) -->
+        <template v-if="user.employee">
             <!-- MODAL: Ajuste de saldo inicial -->
             <Dialog v-model:visible="isInitialBalanceModalVisible" modal header="Ajuste de saldo inicial"
-                :style="{ width: '25rem' }">
+                    :style="{ width: '25rem' }">
                 <span class="text-gray-500 dark:text-gray-400 block mb-4">Establece los días que el empleado tenía
                     acumulados antes
                     de usar el sistema.</span>
@@ -375,15 +374,15 @@ const calculateDayTotalHours = (detail) => {
                 </div>
                 <div class="flex justify-end gap-2 mt-6">
                     <Button type="button" label="Cancelar" severity="secondary"
-                        @click="isInitialBalanceModalVisible = false"></Button>
+                            @click="isInitialBalanceModalVisible = false"></Button>
                     <Button type="button" label="Establecer" @click="saveInitialBalance"
-                        :loading="initialBalanceForm.processing"></Button>
+                            :loading="initialBalanceForm.processing"></Button>
                 </div>
             </Dialog>
 
             <!-- MODAL: Transacción de Vacaciones -->
             <Dialog v-model:visible="transactionModalVisible" modal header="Registrar movimiento de vacaciones"
-                :style="{ width: '30rem' }">
+                    :style="{ width: '30rem' }">
                 <form @submit.prevent="saveTransaction">
                     <div class="flex flex-col gap-4">
                         <!-- Campos para Vacaciones Tomadas -->
@@ -392,9 +391,9 @@ const calculateDayTotalHours = (detail) => {
                                 <label>Rango de fechas</label>
                                 <div class="flex gap-2">
                                     <DatePicker v-model="transactionForm.start_date" placeholder="Inicio" class="w-full"
-                                        :invalid="!!transactionForm.errors.start_date" />
+                                                :invalid="!!transactionForm.errors.start_date" />
                                     <DatePicker v-model="transactionForm.end_date" placeholder="Fin" class="w-full"
-                                        :invalid="!!transactionForm.errors.end_date" />
+                                                :invalid="!!transactionForm.errors.end_date" />
                                 </div>
                                 <small v-if="transactionForm.errors.start_date" class="text-red-500">{{
                                     transactionForm.errors.start_date }}</small>
@@ -407,7 +406,7 @@ const calculateDayTotalHours = (detail) => {
                             <div class="flex flex-col gap-2">
                                 <label>Días a {{ transactionType === 'earned' ? 'otorgar' : 'ajustar' }}</label>
                                 <InputNumber v-model="transactionForm.days"
-                                    :placeholder="transactionType === 'adjustment' ? 'Puede ser negativo' : ''" />
+                                             :placeholder="transactionType === 'adjustment' ? 'Puede ser negativo' : ''" />
                             </div>
                         </template>
                         <div class="flex flex-col gap-2">
@@ -417,13 +416,13 @@ const calculateDayTotalHours = (detail) => {
                     </div>
                     <div class="flex justify-end gap-2 mt-6">
                         <Button type="button" label="Cancelar" severity="secondary"
-                            @click="transactionModalVisible = false" outlined />
+                                @click="transactionModalVisible = false" outlined />
                         <Button type="submit" label="Guardar" :loading="transactionForm.processing" />
                     </div>
                 </form>
             </Dialog>
 
-            <!-- ✨ Popover para mostrar la descripción -->
+             <!-- Popover para mostrar la descripción -->
             <Popover ref="descriptionOp">
                 <p class="p-2 text-sm max-w-xs">{{ selectedDescription }}</p>
             </Popover>
@@ -433,7 +432,6 @@ const calculateDayTotalHours = (detail) => {
                 <div class="p-4 w-[400px]">
                     <h3 class="font-bold text-lg mb-2">Detalles del horario</h3>
                     <div v-if="employeeSchedule">
-                        <!-- ... (Detalles de la sucursal) ... -->
                         <div>
                             <h4 class="font-semibold text-base mb-2">Horario de "{{ employeeSchedule.name }}"</h4>
                             <table class="w-full text-sm text-left">
@@ -456,7 +454,6 @@ const calculateDayTotalHours = (detail) => {
                                             <td class="px-2 py-1">{{ formatTime(getDayFromSchedule(index + 1).end_time)
                                             }}</td>
                                             <td class="px-2 py-1">{{ getDayFromSchedule(index + 1).meal_minutes }}</td>
-                                            <!-- ✨ Cálculo dinámico de horas por día -->
                                             <td class="px-2 py-1 font-semibold">{{
                                                 calculateDayTotalHours(getDayFromSchedule(index + 1)).toFixed(1) }}</td>
                                         </template>
@@ -468,13 +465,12 @@ const calculateDayTotalHours = (detail) => {
                                     </tr>
                                 </tbody>
                             </table>
-                            <!-- ✨ Cálculo dinámico de horas semanales -->
                             <p class="text-right font-bold mt-2">Total de horas por semana: {{
                                 totalWeeklyHours.toFixed(2) }}</p>
                         </div>
                     </div>
                 </div>
             </Popover>
-        </div>
+        </template>
     </AppLayout>
 </template>
