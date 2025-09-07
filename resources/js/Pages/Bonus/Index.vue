@@ -2,35 +2,40 @@
 import { computed, ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
-import es from 'date-fns/locale/es';
+import { startOfMonth, endOfMonth } from 'date-fns';
+import { useFormatters } from '@/Composables';
 
 const props = defineProps({ periods: Object });
 
+// --- Composables ---
+const { formatDate, getStatusInfo } = useFormatters();
+
+// --- State & Config ---
 const home = ref({ icon: 'pi pi-home', url: route('dashboard') });
 const items = ref([{ label: 'Bonos' }]);
+const bonusStatusMap = {
+    draft: { label: 'Borrador', severity: 'warn' },
+    finalized: { label: 'Finalizado', severity: 'success' },
+};
+const defaultStatus = { label: 'Abierto', severity: 'info' };
 
+// --- Computed ---
 const processedPeriods = computed(() => {
     return props.periods.data.map(p => {
         const periodDate = new Date(p.period);
+        const status = p.status ? getStatusInfo(p.status, bonusStatusMap) : defaultStatus;
 
         return {
             ...p,
-            displayPeriod: `${format(startOfMonth(periodDate), 'dd MMMM yyyy', { locale: es })} - ${format(endOfMonth(periodDate), 'dd MMMM yyyy', { locale: es })}`,
-            displayMonth: format(periodDate, 'MMMM', { locale: es }),
-            // --- CAMBIO: --- El estatus ahora se basa en el dato del backend
-            statusLabel: {
-                draft: 'Borrador',
-                finalized: 'Finalizado'
-            }[p.status] || 'Abierto', // 'Abierto' si aún no hay reporte
-            statusSeverity: {
-                draft: 'warn',
-                finalized: 'success'
-            }[p.status] || 'info',
+            displayPeriod: `${formatDate(startOfMonth(periodDate))} - ${formatDate(endOfMonth(periodDate))}`,
+            displayMonth: formatDate(periodDate, 'MMMM'),
+            statusLabel: status.label,
+            statusSeverity: status.severity,
         };
     });
 });
 
+// --- Methods ---
 const onRowSelect = (event) => {
     const period_date = new Date(event.data.period);
     const formatted_period = `${period_date.getFullYear()}-${String(period_date.getMonth() + 1).padStart(2, '0')}`;
@@ -60,11 +65,7 @@ const onRowSelect = (event) => {
                                 <Tag :value="data.statusLabel" :severity="data.statusSeverity" />
                             </template>
                         </Column>
-                        <template #empty>
-                            <div class="text-center p-8">
-                                <p class="text-gray-500 dark:text-gray-400">No se encontraron periodos de bonos.</p>
-                            </div>
-                        </template>
+                        <template #empty><div class="text-center p-8"><p class="text-gray-500 dark:text-gray-400">No se encontraron periodos de bonos.</p></div></template>
                     </DataTable>
                 </div>
             </div>
