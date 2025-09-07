@@ -11,8 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('concrete_holidays', function (Blueprint $table) {
+        Schema::create('payroll_periods', function (Blueprint $table) {
             $table->id();
+            $table->integer('week_number');
+            $table->date('start_date');
+            $table->date('end_date');
+            $table->date('payment_date');
+            $table->enum('status', ['open', 'closed'])->default('open');
             $table->timestamps();
         });
     }
@@ -22,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('concrete_holidays');
+        Schema::dropIfExists('payroll_periods');
     }
 };

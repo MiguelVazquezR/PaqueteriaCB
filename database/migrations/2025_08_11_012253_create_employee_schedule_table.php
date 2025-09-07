@@ -13,7 +13,13 @@ return new class extends Migration
     {
         Schema::create('employee_schedule', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
+            $table->foreignId('schedule_id')->constrained('schedules')->cascadeOnDelete();
+            $table->date('start_date');
+            $table->date('end_date')->nullable();
             $table->timestamps();
+
+            $table->unique(['employee_id', 'schedule_id', 'start_date']);
         });
     }
 
