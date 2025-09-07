@@ -26,7 +26,7 @@ const submit = () => {
 <template>
 
     <Head title="Inicio de sesión" />
-    <FloatingConfigurator />
+    <!-- <FloatingConfigurator /> -->
     <div
         class="bg-surface-50 dark:bg-surface-950 flex items-center justify-center min-h-screen min-w-[100vw] overflow-hidden">
         <div class="flex flex-col items-center justify-center">
@@ -44,15 +44,15 @@ const submit = () => {
                                 fill="var(--primary-color)" />
                         </svg>
                         <div class="text-surface-900 dark:text-surface-0 text-3xl font-medium mb-4">Paquetería CB</div>
-                        <span class="text-muted-color font-medium">Agrega tus credenciales para continuar</span>
+                        <span class="text-muted-color font-medium">Ingresa tus credenciales para continuar</span>
                     </div>
 
                     <div>
-                        <label for="email1"
-                            class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Correo
-                            electrónico</label>
-                        <InputText id="email1" type="text" placeholder="Correo electrónico" class="w-full md:w-[30rem]"
-                            :invalid="form.errors.email" v-model="form.email" />
+                        <label for="email1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">
+                            Email o número de empleado
+                        </label>
+                        <InputText id="email1" type="text" placeholder="Ingresa tu email o número de empleado"
+                            class="w-full md:w-[30rem]" :invalid="form.errors.email" v-model="form.email" />
                         <Message v-if="form.errors.email" severity="error" variant="simple" size="small">
                             {{ form.errors.email }}
                         </Message>
@@ -60,8 +60,8 @@ const submit = () => {
                         <label for="password1"
                             class="block text-surface-900 dark:text-surface-0 font-medium text-xl mb-2 mt-4">Contraseña</label>
                         <Password id="password1" v-model="form.password" placeholder="Contraseña" :toggleMask="true"
-                            fluid :feedback="false" :invalid="form.errors.password"></Password>
-                        <Message v-if="form.errors.password" severity="error" variant="simple" size="small" >
+                            fluid :feedback="false" :invalid="form.errors.password" @keypress.enter="submit"></Password>
+                        <Message v-if="form.errors.password" severity="error" variant="simple" size="small">
                             {{ form.errors.password }}
                         </Message>
 
@@ -75,55 +75,12 @@ const submit = () => {
                             ¿Olvidaste tu contraseña?
                             </Link>
                         </div>
-                        <Button @click="submit" label="Iniciar sesión" class="w-full"></Button>
+                        <Button @click="submit" label="Iniciar sesión" :loading="form.processing" class="w-full"></Button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <!-- <AuthenticationCard>
-        <template #logo>
-            <AuthenticationCardLogo />
-        </template>
-
-<div v-if="status" class="mb-4 font-medium text-sm text-green-600">
-    {{ status }}
-</div>
-
-<form @submit.prevent="submit">
-    <div>
-        <InputLabel for="email" value="Email" />
-        <TextInput id="email" v-model="form.email" type="email" class="mt-1 block w-full" required autofocus
-            autocomplete="username" />
-        <InputError class="mt-2" :message="form.errors.email" />
-    </div>
-
-    <div class="mt-4">
-        <InputLabel for="password" value="Password" />
-        <TextInput id="password" v-model="form.password" type="password" class="mt-1 block w-full" required
-            autocomplete="current-password" />
-        <InputError class="mt-2" :message="form.errors.password" />
-    </div>
-
-    <div class="block mt-4">
-        <label class="flex items-center">
-            <Checkbox v-model:checked="form.remember" name="remember" />
-            <span class="ms-2 text-sm text-gray-600">Remember me</span>
-        </label>
-    </div>
-
-    <div class="flex items-center justify-end mt-4">
-        <Link v-if="canResetPassword" :href="route('password.request')"
-            class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-        Forgot your password?
-        </Link>
-
-        <PrimaryButton class="ms-4" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
-            Log in
-        </PrimaryButton>
-    </div>
-</form>
-</AuthenticationCard> -->
 </template>
 <style scoped>
 .pi-eye {

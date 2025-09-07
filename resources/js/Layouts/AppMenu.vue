@@ -1,147 +1,81 @@
 <script setup>
-import { ref } from 'vue';
-
+import { ref, computed } from 'vue'; // Se importa computed
+import { usePage } from '@inertiajs/vue3'; // Se importa usePage para acceder a los permisos
 import AppMenuItem from './AppMenuItem.vue';
 
+// --- CAMBIO: --- Se añade una propiedad `permission` a cada elemento del menú que lo requiera.
+// El nombre del permiso debe coincidir exactamente con el que tienes en tu base de datos.
 const model = ref([
     {
-        label: 'Home',
-        items: [{ label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/' }]
-    },
-    {
-        label: 'UI Components',
         items: [
-            { label: 'Form Layout', icon: 'pi pi-fw pi-id-card', to: '/uikit/formlayout' },
-            { label: 'Input', icon: 'pi pi-fw pi-check-square', to: '/uikit/input' },
-            { label: 'Button', icon: 'pi pi-fw pi-mobile', to: '/uikit/button', class: 'rotated-icon' },
-            { label: 'Table', icon: 'pi pi-fw pi-table', to: '/uikit/table' },
-            { label: 'List', icon: 'pi pi-fw pi-list', to: '/uikit/list' },
-            { label: 'Tree', icon: 'pi pi-fw pi-share-alt', to: '/uikit/tree' },
-            { label: 'Panel', icon: 'pi pi-fw pi-tablet', to: '/uikit/panel' },
-            { label: 'Overlay', icon: 'pi pi-fw pi-clone', to: '/uikit/overlay' },
-            { label: 'Media', icon: 'pi pi-fw pi-image', to: '/uikit/media' },
-            { label: 'Menu', icon: 'pi pi-fw pi-bars', to: '/uikit/menu' },
-            { label: 'Message', icon: 'pi pi-fw pi-comment', to: '/uikit/message' },
-            { label: 'File', icon: 'pi pi-fw pi-file', to: '/uikit/file' },
-            { label: 'Chart', icon: 'pi pi-fw pi-chart-bar', to: '/uikit/charts' },
-            { label: 'Timeline', icon: 'pi pi-fw pi-calendar', to: '/uikit/timeline' },
-            { label: 'Misc', icon: 'pi pi-fw pi-circle', to: '/uikit/misc' }
-        ]
-    },
-    {
-        label: 'Pages',
-        icon: 'pi pi-fw pi-briefcase',
-        to: '/pages',
-        items: [
+            { label: 'Inicio', icon: 'pi pi-fw pi-home', to: route('dashboard'), routeName: 'dashboard' },
+            { label: 'Usuarios', icon: 'pi pi-fw pi-user', to: route('users.index'), routeName: 'users.*', permission: 'ver_usuarios' },
+            { label: 'Sucursales', icon: 'pi pi-fw pi-building', to: route('branches.index'), routeName: 'branches.*', permission: 'ver_sucursales' },
+            { label: 'Incidencias', icon: 'pi pi-fw pi-calendar-times', to: route('incidents.index'), routeName: 'incidents.*', permission: 'ver_incidencias' },
+            { label: 'Bonos', icon: 'pi pi-fw pi-wallet', to: route('bonuses.index'), routeName: 'bonuses.*', permission: 'ver_bonos' },
             {
-                label: 'Landing',
-                icon: 'pi pi-fw pi-globe',
-                to: '/landing'
-            },
-            {
-                label: 'Auth',
-                icon: 'pi pi-fw pi-user',
+                label: 'Configuraciones', icon: 'pi pi-fw pi-cog',
                 items: [
                     {
-                        label: 'Login',
-                        icon: 'pi pi-fw pi-sign-in',
-                        to: '/auth/login'
+                        label: 'Roles y permisos',
+                        icon: 'pi pi-key',
+                        to: route('settings.roles-permissions.index'),
+                        routeName: 'settings.roles-permissions.*',
+                        permission: 'ver_roles_permisos'
                     },
                     {
-                        label: 'Error',
-                        icon: 'pi pi-fw pi-times-circle',
-                        to: '/auth/error'
+                        label: 'Días festivos',
+                        icon: 'pi pi-calendar-plus',
+                        to: route('settings.holidays.index'),
+                        routeName: 'settings.holidays.*',
+                        permission: 'ver_festivos'
                     },
                     {
-                        label: 'Access Denied',
-                        icon: 'pi pi-fw pi-lock',
-                        to: '/auth/access'
-                    }
+                        label: 'Horarios del personal',
+                        icon: 'pi pi-clock',
+                        to: route('settings.schedules.index'),
+                        routeName: 'settings.schedules.*',
+                        permission: 'ver_horarios'
+                    },
                 ]
             },
-            {
-                label: 'Crud',
-                icon: 'pi pi-fw pi-pencil',
-                to: '/pages/crud'
-            },
-            {
-                label: 'Not Found',
-                icon: 'pi pi-fw pi-exclamation-circle',
-                to: '/pages/notfound'
-            },
-            {
-                label: 'Empty',
-                icon: 'pi pi-fw pi-circle-off',
-                to: '/pages/empty'
-            }
         ]
     },
-    {
-        label: 'Hierarchy',
-        items: [
-            {
-                label: 'Submenu 1',
-                icon: 'pi pi-fw pi-bookmark',
-                items: [
-                    {
-                        label: 'Submenu 1.1',
-                        icon: 'pi pi-fw pi-bookmark',
-                        items: [
-                            { label: 'Submenu 1.1.1', icon: 'pi pi-fw pi-bookmark' },
-                            { label: 'Submenu 1.1.2', icon: 'pi pi-fw pi-bookmark' },
-                            { label: 'Submenu 1.1.3', icon: 'pi pi-fw pi-bookmark' }
-                        ]
-                    },
-                    {
-                        label: 'Submenu 1.2',
-                        icon: 'pi pi-fw pi-bookmark',
-                        items: [{ label: 'Submenu 1.2.1', icon: 'pi pi-fw pi-bookmark' }]
-                    }
-                ]
-            },
-            {
-                label: 'Submenu 2',
-                icon: 'pi pi-fw pi-bookmark',
-                items: [
-                    {
-                        label: 'Submenu 2.1',
-                        icon: 'pi pi-fw pi-bookmark',
-                        items: [
-                            { label: 'Submenu 2.1.1', icon: 'pi pi-fw pi-bookmark' },
-                            { label: 'Submenu 2.1.2', icon: 'pi pi-fw pi-bookmark' }
-                        ]
-                    },
-                    {
-                        label: 'Submenu 2.2',
-                        icon: 'pi pi-fw pi-bookmark',
-                        items: [{ label: 'Submenu 2.2.1', icon: 'pi pi-fw pi-bookmark' }]
-                    }
-                ]
-            }
-        ]
-    },
-    {
-        label: 'Get Started',
-        items: [
-            {
-                label: 'Documentation',
-                icon: 'pi pi-fw pi-book',
-                to: '/documentation'
-            },
-            {
-                label: 'View Source',
-                icon: 'pi pi-fw pi-github',
-                url: 'https://github.com/primefaces/sakai-vue',
-                target: '_blank'
-            }
-        ]
-    }
 ]);
+
+// --- CAMBIO: --- Se crea una propiedad computada que filtra el menú.
+const userPermissions = computed(() => usePage().props.auth.permissions || []);
+
+const filterMenu = (items) => {
+    return items.reduce((acc, item) => {
+        // 1. Comprobar si el usuario tiene permiso para ver el elemento.
+        const hasPermission = !item.permission || userPermissions.value.includes(item.permission);
+
+        if (hasPermission) {
+            // 2. Si el elemento tiene sub-elementos, filtrarlos recursivamente.
+            if (item.items) {
+                const filteredChildren = filterMenu(item.items);
+                // Solo se añade el elemento padre si tiene al menos un hijo visible.
+                if (filteredChildren.length > 0) {
+                    acc.push({ ...item, items: filteredChildren });
+                }
+            } else {
+                // Si es un enlace directo y tiene permiso, se añade.
+                acc.push(item);
+            }
+        }
+        return acc;
+    }, []);
+};
+
+// El menú que se renderizará en el template será este, ya filtrado.
+const filteredModel = computed(() => filterMenu(model.value));
 </script>
 
 <template>
     <ul class="layout-menu">
-        <template v-for="(item, i) in model" :key="item">
+        <!-- --- CAMBIO: --- Se itera sobre 'filteredModel' en lugar de 'model'. -->
+        <template v-for="(item, i) in filteredModel" :key="item">
             <app-menu-item v-if="!item.separator" :item="item" :index="i"></app-menu-item>
             <li v-if="item.separator" class="menu-separator"></li>
         </template>

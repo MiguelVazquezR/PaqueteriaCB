@@ -16,9 +16,10 @@ return new class extends Migration
             $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
             $table->foreignId('created_by_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->enum('type', ['entry', 'break_start', 'break_end', 'exit']);
+            $table->integer('late_minutes')->nullable();
+            $table->boolean('late_ignored')->default(false);
             $table->string('image_path')->nullable();
-            $table->timestamp('created_at')->useCurrent();
-            // Laravel añade la columna `updated_at`. Si no la necesitas, desactívala en el modelo.
+            $table->timestamps();
         });
     }
 

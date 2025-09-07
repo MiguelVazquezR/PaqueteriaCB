@@ -11,22 +11,12 @@ class HolidayRule extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'branch_id',
         'name',
         'rule_definition',
+        'is_active',
     ];
 
     protected $casts = [
         'rule_definition' => 'array',
     ];
-
-    public function branch()
-    {
-        return $this->belongsTo(Branch::class);
-    }
-
-    public function concreteHolidays()
-    {
-        return $this->hasMany(ConcreteHoliday::class);
-    }
 }

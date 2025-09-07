@@ -15,7 +15,9 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('address')->nullable();
+            $table->string('phone')->nullable();
             $table->json('settings')->nullable();
+            $table->json('business_hours')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });

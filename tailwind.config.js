@@ -23,7 +23,8 @@ export default {
         },
         extend: {
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                // sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                sans: ['Livvic', ...defaultTheme.fontFamily.sans],
             },
         },
     },

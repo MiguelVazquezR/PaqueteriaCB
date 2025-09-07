@@ -11,16 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('payrolls', function (Blueprint $table) {
+        Schema::create('payroll_periods', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('employee_id')->constrained('employees')->cascadeOnDelete();
+            $table->integer('week_number');
             $table->date('start_date');
             $table->date('end_date');
-            $table->decimal('gross_pay', 10, 2);
-            $table->decimal('deductions', 10, 2);
-            $table->decimal('net_pay', 10, 2);
-            $table->json('calculation_data')->nullable();
-            $table->enum('status', ['generated', 'approved', 'paid'])->default('generated');
+            $table->date('payment_date');
+            $table->enum('status', ['open', 'closed'])->default('open');
             $table->timestamps();
         });
     }
@@ -30,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('payrolls');
+        Schema::dropIfExists('payroll_periods');
     }
 };

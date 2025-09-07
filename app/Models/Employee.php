@@ -19,14 +19,44 @@ class Employee extends Model
         'hire_date',
         'base_salary',
         'aws_rekognition_face_id',
+        'phone',
+        'birth_date',
+        'address',
+        'curp',
+        'rfc',
+        'nss',
+        'emergency_contact_name',
+        'emergency_contact_phone',
+        'emergency_contact_relationship',
         'is_active',
+        'vacation_balance',
+        'termination_date',
+        'termination_reason',
     ];
 
     protected $casts = [
         'hire_date' => 'date',
+        'termination_date' => 'date',
+        'birth_date' => 'date',
         'is_active' => 'boolean',
         'base_salary' => 'decimal:2',
     ];
+
+    /**
+     * Scope a query to only include employees active within a given period.
+     */
+    public function scopeActiveInPeriod($query, $startDate, $endDate)
+    {
+        return $query->where(function ($q) use ($startDate, $endDate) {
+            $q->whereHas('attendances', function ($subQ) use ($startDate, $endDate) {
+                $subQ->whereBetween('created_at', [$startDate, $endDate->copy()->endOfDay()]);
+            })
+                ->orWhereHas('incidents', function ($subQ) use ($startDate, $endDate) {
+                    $subQ->whereDate('start_date', '<=', $endDate)
+                        ->whereDate('end_date', '>=', $startDate);
+                });
+        });
+    }
 
     public function user()
     {

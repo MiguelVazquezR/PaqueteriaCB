@@ -20,11 +20,4 @@ class Bonus extends Model
         'rules' => 'array',
         'amount' => 'decimal:2',
     ];
-
-    public function employees()
-    {
-        return $this->belongsToMany(Employee::class, 'employee_bonus')
-            ->withPivot('payroll_id', 'applied_amount')
-            ->withTimestamps();
-    }
 }
