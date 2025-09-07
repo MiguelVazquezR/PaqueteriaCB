@@ -99,7 +99,7 @@ function itemClick(event, item) {
         </a>
 
         <Link v-if="item.to && !item.items && item.visible !== false" @click="itemClick($event, item)"
-            :class="[item.class, { 'text-gray-600 bg-gray-50 dark:text-gray-300 dark:bg-gray-700 font-semibold': isLinkActive }]"
+            :class="[item.class, { 'text-gray-600 bg-gray-50 dark:text-gray-300 dark:bg-neutral-900 font-semibold': isLinkActive }]"
             class="text-gray-300 hover:text-gray-600 dark:hover:text-gray-300" tabindex="0" :href="item.to">
         <i :class="item.icon" class="layout-menuitem-icon"></i>
         <span class="layout-menuitem-text">{{ item.label }}</span>

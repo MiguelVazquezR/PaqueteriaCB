@@ -169,22 +169,24 @@ const confirmDeleteRole = (role) => {
             <!-- === GRID DE ROLES === -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div v-for="role in roles" :key="role.id"
-                    class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 flex items-center justify-between">
+                    class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-6 flex items-center justify-between">
                     <div class="flex items-center gap-4">
-                        <div class="bg-primary-100 dark:bg-primary-900/50 p-3 rounded-full">
+                        <div class="bg-primary-100 dark:bg-primary-500/50 p-3 rounded-full">
                             <i class="pi pi-users text-primary-600 dark:text-primary-300 text-2xl"></i>
                         </div>
                         <div>
                             <h2 class="font-semibold text-lg text-gray-800 dark:text-gray-200 m-0">{{ role.name }}</h2>
                             <button @click="openPermissionsDrawer(role)"
-                                class="text-sm text-primary-600 flex items-center gap-1">
+                                class="text-sm text-primary-500 flex items-center gap-1">
                                 <span>Ver permisos</span>
                                 <i class="pi pi-arrow-right !text-xs"></i>
                             </button>
                         </div>
                     </div>
-                    <span class="text-sm bg-[#f8f8f8] px-2 py-1 rounded-full text-[#3f3f3f]">{{ role.permissions_count
-                        }} permisos</span>
+                    <span
+                        class="text-sm bg-primary-100 dark:bg-primary-500/50 px-2 py-1 rounded-full text-primary-600 dark:text-primary-300">
+                        {{ role.permissions_count }} permisos
+                    </span>
                 </div>
             </div>
 
@@ -207,7 +209,7 @@ const confirmDeleteRole = (role) => {
                     <div v-for="(permissionGroup, groupName) in permissions" :key="groupName"
                         class="border rounded-xl border-[#d9d9d9] p-2">
                         <h3
-                            class="font-semibold text-[#3f3f3f] bg-[#f8f8f8] dark:bg-gray-900 rounded-lg px-2 py-1 dark:text-gray-300 capitalize flex items-center gap-2 text-base">
+                            class="font-semibold text-[#3f3f3f] bg-[#f8f8f8] dark:bg-neutral-700 rounded-lg px-2 py-1 dark:text-gray-300 capitalize flex items-center gap-2 text-base">
                             <i class="pi pi-folder"></i>
                             <span>{{ groupName }}</span>
                         </h3>
@@ -222,10 +224,10 @@ const confirmDeleteRole = (role) => {
                                 </label>
                             </div>
                             <div class="flex items-center">
-                                <Button v-if="hasPermission('editar_permisos')" icon="pi pi-pencil" text rounded size="small"
-                                    @click="openEditPermissionModal(permission)" />
-                                <Button v-if="hasPermission('eliminar_permisos')" icon="pi pi-trash" text rounded size="small" severity="danger"
-                                    @click="confirmDeletePermission(permission)" />
+                                <Button v-if="hasPermission('editar_permisos')" icon="pi pi-pencil" text rounded
+                                    size="small" @click="openEditPermissionModal(permission)" />
+                                <Button v-if="hasPermission('eliminar_permisos')" icon="pi pi-trash" text rounded
+                                    size="small" severity="danger" @click="confirmDeletePermission(permission)" />
                             </div>
                         </div>
                     </div>
@@ -244,8 +246,8 @@ const confirmDeleteRole = (role) => {
                         </div>
                         <div class="flex justify-end gap-2 mt-4">
                             <Button label="Cancelar" severity="secondary" @click="drawerVisible = false" />
-                            <Button v-if="hasPermission('editar_roles')" label="Guardar permisos" @click="savePermissions"
-                                :loading="permissionsForm.processing" />
+                            <Button v-if="hasPermission('editar_roles')" label="Guardar permisos"
+                                @click="savePermissions" :loading="permissionsForm.processing" />
                         </div>
                     </div>
                 </template>
@@ -262,7 +264,7 @@ const confirmDeleteRole = (role) => {
                                 placeholder="Ej: ver, crear, eliminar" :invalid="!!newPermissionForm.errors.action" />
                             <small v-if="newPermissionForm.errors.action" class="text-red-500">{{
                                 newPermissionForm.errors.action
-                                }}</small>
+                            }}</small>
                         </div>
                         <div class="flex flex-col gap-2">
                             <InputLabel for="category" value="Categoría del permiso*" />
@@ -292,7 +294,7 @@ const confirmDeleteRole = (role) => {
                                 :invalid="!!editPermissionForm.errors.action" />
                             <small v-if="editPermissionForm.errors.action" class="text-red-500">{{
                                 editPermissionForm.errors.action
-                            }}</small>
+                                }}</small>
                         </div>
                         <div class="flex flex-col gap-2">
                             <InputLabel for="edit-category" value="Categoría del permiso*" />

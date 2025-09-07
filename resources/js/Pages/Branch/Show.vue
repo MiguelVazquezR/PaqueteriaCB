@@ -69,8 +69,8 @@ const hasPermission = (permission) => {
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Columna Izquierda -->
-                <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-2">
-                    <div class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-gray-900 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
+                <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-2">
+                    <div class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-neutral-700 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
                         <i class="pi pi-building"></i>
                         <span>Información general</span>
                     </div>
@@ -92,8 +92,8 @@ const hasPermission = (permission) => {
 
                 <!-- Columna Derecha -->
                 <div class="space-y-6">
-                    <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-2">
-                        <div class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-gray-900 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
+                    <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-2">
+                        <div class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-neutral-700 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
                             <i class="pi pi-sliders-h"></i>
                             <span>Configuración general</span>
                         </div>
@@ -101,8 +101,8 @@ const hasPermission = (permission) => {
                     </div>
 
                     <!-- --- CAMBIO: --- La tarjeta de horario ahora lee de 'businessHours' y es más simple. -->
-                    <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-2">
-                        <div class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-gray-900 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
+                    <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-2">
+                        <div class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-neutral-700 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
                             <i class="pi pi-calendar"></i>
                             <span>Horario de operación</span>
                         </div>

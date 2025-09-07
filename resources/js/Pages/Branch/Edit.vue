@@ -77,7 +77,7 @@ const submit = () => {
         <Breadcrumb :home="home" :model="items" class="!bg-transparent" />
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <form @submit.prevent="submit">
-                <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg px-6 py-4">
+                <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg px-6 py-4">
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Editar sucursal</h1>
 
                     <!-- El resto del template es idéntico al de Create.vue -->
@@ -121,7 +121,7 @@ const submit = () => {
                         ayuda a validar los registros de asistencia.</p>
                     <div class="border rounded-lg p-2 space-y-4">
                         <div
-                            class="hidden md:grid grid-cols-4 gap-4 font-semibold text-sm bg-[#f8f8f8] dark:bg-gray-900 rounded-lg py-1 px-2 text-gray-600 dark:text-gray-400">
+                            class="hidden md:grid grid-cols-4 gap-4 font-semibold text-sm bg-[#f8f8f8] dark:bg-neutral-700 rounded-lg py-1 px-2 text-gray-600 dark:text-gray-400">
                             <span>Día</span>
                             <span>Apertura</span>
                             <span>Cierre</span>

@@ -38,7 +38,7 @@ const submit = () => {
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
             <form @submit.prevent="submit">
-                <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg px-6 py-4">
+                <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg px-6 py-4">
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Crear rol</h1>
 
                     <!-- === INFORMACIÓN DEL ROL === -->

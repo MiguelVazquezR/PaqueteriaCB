@@ -27,7 +27,7 @@ const description = computed(() => {
 
 <template>
     <Head :title="title" />
-    <div class="bg-gray-100 dark:bg-gray-900 flex items-center justify-center min-h-screen font-sans">
+    <div class="bg-gray-100 dark:bg-neutral-700 flex items-center justify-center min-h-screen font-sans">
         <div class="w-full max-w-md p-8 text-center">
             <div class="mb-6">
                 <img src="@/../../public/images/error.png" alt="" draggable="false" class="select-none">                

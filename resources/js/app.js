@@ -9,12 +9,13 @@ import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import PrimeVue from 'primevue/config';
 import ConfirmationService from 'primevue/confirmationservice';
 import ToastService from 'primevue/toastservice';
-import Aura from '@primeuix/themes/aura';
 import "primeicons/primeicons.css";
 
 import '@/assets/styles.scss';
+import Noir from './presets/noir';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
@@ -25,7 +26,7 @@ createInertiaApp({
             .use(ZiggyVue)
             .use(PrimeVue, {
                 theme: {
-                    preset: Aura,
+                    preset: Noir,
                     options: {
                         darkModeSelector: '.app-dark'
                     }

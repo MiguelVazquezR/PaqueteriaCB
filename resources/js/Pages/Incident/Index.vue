@@ -80,7 +80,7 @@ const onRowSelect = (event) => {
         <Breadcrumb :home="home" :model="items" class="!bg-transparent" />
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-            <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg">
+            <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg">
                 <div class="flex flex-col sm:flex-row justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 text-center sm:text-left">Incidencias</h1>
                     <IconField>

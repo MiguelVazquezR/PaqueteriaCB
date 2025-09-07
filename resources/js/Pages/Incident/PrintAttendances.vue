@@ -57,7 +57,7 @@ const print = () => {
 
             <div class="space-y-4 print:space-y-2" id="print-container">
                 <div v-for="employee in employeesData" :key="employee.id"
-                    class="bg-white dark:bg-gray-800 shadow-md rounded-lg px-6 py-3 print:py-1 print:shadow-none print:border print:rounded-none print:flex print:flex-col print:justify-between print:break-inside-avoid">
+                    class="bg-white dark:bg-neutral-900 shadow-md rounded-lg px-6 py-3 print:py-1 print:shadow-none print:border print:rounded-none print:flex print:flex-col print:justify-between print:break-inside-avoid">
                     <div>
                         <!-- ... (Cabecera del empleado sin cambios) ... -->
                         <div class="overflow-x-auto mt-1">

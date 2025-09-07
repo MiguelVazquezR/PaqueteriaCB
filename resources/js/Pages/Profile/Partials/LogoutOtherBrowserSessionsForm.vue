@@ -34,7 +34,7 @@ const closeModal = () => {
 </script>
 
 <template>
-    <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg">
+    <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg">
         <div class="p-6">
             <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
                 Sesiones del navegador

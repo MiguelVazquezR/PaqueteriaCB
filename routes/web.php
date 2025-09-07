@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', 'login');
@@ -20,4 +21,15 @@ Route::middleware('auth')->group(function () {
     require __DIR__ . '/web/settings.php';
     require __DIR__ . '/web/users.php';
     require __DIR__ . '/web/vacations.php';
+});
+
+//artisan commands -------------------
+Route::get('/clear-all', function () {
+    Artisan::call('optimize:clear');
+    return 'cleared.';
+});
+
+Route::get('/storage-link', function () {
+    Artisan::call('storage:link');
+    return 'cleared.';
 });

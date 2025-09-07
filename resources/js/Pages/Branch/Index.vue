@@ -119,7 +119,7 @@ const toggleSchedulePopover = (event, branch) => {
     <AppLayout>
         <Breadcrumb :home="home" :model="items" class="!bg-transparent" />
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg">
+            <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg">
                 <div class="flex justify-end items-center p-6 pb-0">
                     <Link :href="route('branches.create')" class="sm:mt-0 w-full sm:w-auto">
                         <Button v-if="hasPermission('crear_sucursales')" label="Crear sucursal" icon="pi pi-plus" class="w-full" />

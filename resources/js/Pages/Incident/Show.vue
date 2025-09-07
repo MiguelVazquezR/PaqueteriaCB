@@ -312,7 +312,7 @@ const confirmDeleteBreak = (breakItem) => {
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
             <!-- === HEADER DE CONTROL === -->
-            <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-4 mb-6">
+            <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-4 mb-6">
                 <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                     <div class="flex items-center gap-4">
                         <Button icon="pi pi-chevron-left" text rounded :disabled="!navigation.previous_period_id"
@@ -345,7 +345,7 @@ const confirmDeleteBreak = (breakItem) => {
             <!-- === LISTA DE EMPLEADOS === -->
             <div class="space-y-6">
                 <div v-for="employee in employeesData" :key="employee.id"
-                    class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-3">
+                    class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-3">
                     <!-- Cabecera del empleado -->
                     <div
                         class="flex justify-between items-end p-4 bg-[#f8f8f8] text-[#3f3f3f] rounded-[9px] dark:bg-gray-700 dark:text-gray-100">

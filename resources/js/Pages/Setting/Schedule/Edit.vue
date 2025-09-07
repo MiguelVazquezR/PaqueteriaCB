@@ -79,7 +79,7 @@ const submit = () => {
         <Breadcrumb :home="home" :model="items" class="!bg-transparent" />
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <form @submit.prevent="submit">
-                <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
+                <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-6">
                     <h1 class="text-xl font-bold mb-6">Editar horario</h1>
                     <div>
                         <InputLabel value="Nombre del horario*" />
@@ -101,7 +101,7 @@ const submit = () => {
                     <!-- --- CAMBIO: --- Guía de horarios de atención rediseñada para leer de 'business_hours'. -->
                     <div v-if="selectedBranchesSchedules.length"
                         class="mt-6 p-4 border rounded-lg">
-                        <h3 class="font-semibold mb-3 bg-[#f8f8f8] dark:bg-gray-900 text-[#3f3f3f] dark:text-gray-300 text-lg rounded-md px-2">
+                        <h3 class="font-semibold mb-3 bg-[#f8f8f8] dark:bg-neutral-700 text-[#3f3f3f] dark:text-gray-300 text-lg rounded-md px-2">
                             Guía de horario de atención
                         </h3>
                         <div class="space-y-2">

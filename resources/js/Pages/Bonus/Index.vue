@@ -43,7 +43,7 @@ const onRowSelect = (event) => {
     <AppLayout>
         <Breadcrumb :home="home" :model="items" class="!bg-transparent" />
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg">
+            <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg">
                 <div class="p-6 border-b flex justify-between items-center">
                     <h1 class="text-2xl font-bold">Reporte de Bonos Mensuales</h1>
                 </div>

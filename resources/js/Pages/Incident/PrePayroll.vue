@@ -45,7 +45,7 @@ const filteredIncidents = (incidents) => {
     <AppLayout>
         <Breadcrumb :home="home" :model="items" class="!bg-transparent print:hidden" />
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
+            <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-6">
                 <!-- HEADER -->
                 <div class="flex justify-between items-start pb-4 border-b">
                     <div>

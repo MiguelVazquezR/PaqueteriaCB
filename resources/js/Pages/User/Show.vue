@@ -183,7 +183,7 @@ const calculateDayTotalHours = (detail) => {
 
             <!-- === HEADER DE PERFIL === -->
             <div class="relative">
-                <div class="bg-black dark:bg-gray-800 h-32 md:h-48 shadow-md rounded-3xl overflow-hidden mb-8">
+                <div class="bg-black dark:bg-neutral-900 h-32 md:h-48 shadow-md rounded-3xl overflow-hidden mb-8">
                     <span class="text-white text-6xl absolute bottom-4 right-7 font-bold opacity-40">CB</span>
                     <img :src="user.profile_photo_url" :alt="user.name"
                         class="size-44 rounded-full object-cover absolute left-9 -bottom-7 border-8 border-[#d9d9d9] dark:border-gray-800" />
@@ -210,9 +210,9 @@ const calculateDayTotalHours = (detail) => {
                 <!-- Columna Izquierda -->
                 <div class="lg:col-span-2 space-y-6">
                     <!-- Card: Información Laboral -->
-                    <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-2">
+                    <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-2">
                         <h2
-                            class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-gray-900 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
+                            class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-neutral-700 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
                             <i class="pi pi-briefcase"></i>
                             <span>Información laboral</span>
                         </h2>
@@ -257,7 +257,7 @@ const calculateDayTotalHours = (detail) => {
                     </div>
 
                     <!-- Card: Historial de vacaciones -->
-                    <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
+                    <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-6">
                         <div class="flex flex-col sm:flex-row justify-between items-start mb-4">
                             <div>
                                 <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Historial de
@@ -302,9 +302,9 @@ const calculateDayTotalHours = (detail) => {
                 <!-- Columna Derecha -->
                 <div class="space-y-6">
                     <!-- Card: Información Personal -->
-                    <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-2">
+                    <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-2">
                         <h2
-                            class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-gray-900 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
+                            class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-neutral-700 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
                             <i class="pi pi-user"></i>
                             <span>Información personal</span>
                         </h2>
@@ -322,9 +322,9 @@ const calculateDayTotalHours = (detail) => {
                         </div>
                     </div>
                     <!-- Card: Contacto de emergencia -->
-                    <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-2">
+                    <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-2">
                         <h2
-                            class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-gray-900 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
+                            class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-neutral-700 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
                             <CruzIcon class="size-4" />
                             <span>Contacto de emergencia</span>
                         </h2>
@@ -343,9 +343,9 @@ const calculateDayTotalHours = (detail) => {
                         </div>
                     </div>
                     <!-- Card: Gestión de vacaciones -->
-                    <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-2">
+                    <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-2">
                         <h2
-                            class="font-semibold flex items-center justify-between text-base bg-[#f8f8f8] dark:bg-gray-900 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
+                            class="font-semibold flex items-center justify-between text-base bg-[#f8f8f8] dark:bg-neutral-700 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
                             <div class="flex items-center space-x-3">
                                 <AvionIcon class="size-4" />
                                 <span>Gestión de vacaciones</span>
