@@ -6,7 +6,6 @@ use App\Models\Attendance;
 use App\Models\Branch;
 use App\Models\Employee;
 use App\Models\Incident;
-use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;

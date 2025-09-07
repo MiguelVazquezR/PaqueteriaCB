@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class VacationLedger extends Model
 {
@@ -31,4 +32,13 @@ class VacationLedger extends Model
     protected $casts = [
         'date' => 'date',
     ];
+
+    /**
+     * Get the employee that owns the vacation ledger entry.
+     */
+    public function employee(): BelongsTo
+    {
+        // Un registro del historial pertenece a un solo empleado.
+        return $this->belongsTo(Employee::class);
+    }
 }

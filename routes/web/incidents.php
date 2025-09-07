@@ -2,9 +2,6 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\IncidentController;
-use App\Http\Controllers\IncidentTypeController;
-
-Route::resource('incident-types', IncidentTypeController::class);
 
 Route::post('/incidents/update-attendance', [IncidentController::class, 'updateAttendance'])->name('incidents.updateAttendance');
 Route::post('/incidents/toggle-late-status', [IncidentController::class, 'toggleLateStatus'])->name('incidents.toggleLateStatus');

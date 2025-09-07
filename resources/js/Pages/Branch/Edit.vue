@@ -32,7 +32,7 @@ const createTimeObject = (timeString) => {
     return date;
 };
 
-// --- CAMBIO CLAVE: --- Inicializamos el schedule desde la columna JSON 'business_hours'
+// --- CAMBIO CLAVE: --- Inicializamos el business_hours desde la columna JSON 'business_hours'
 const initialSchedule = {};
 if (props.branch.business_hours) {
     for (const key in props.branch.business_hours) {
@@ -51,13 +51,13 @@ const form = useForm({
     address: props.branch.address,
     phone: props.branch.phone,
     settings: props.branch.settings,
-    schedule: initialSchedule,
+    business_hours: initialSchedule,
 });
 
 form.transform((data) => {
     const transformedData = JSON.parse(JSON.stringify(data));
-    for (const key in transformedData.schedule) {
-        const day = transformedData.schedule[key];
+    for (const key in transformedData.business_hours) {
+        const day = transformedData.business_hours[key];
         day.start_time = day.is_active && day.start_time ? format(new Date(day.start_time), 'HH:mm') : null;
         day.end_time = day.is_active && day.end_time ? format(new Date(day.end_time), 'HH:mm') : null;
     }
@@ -127,7 +127,7 @@ const submit = () => {
                             <span>Cierre</span>
                             <span class="text-center">Día no laborable</span>
                         </div>
-                        <div v-for="(day, key) in form.schedule" :key="key"
+                        <div v-for="(day, key) in form.business_hours" :key="key"
                             class="grid grid-cols-2 md:grid-cols-4 gap-4 items-center px-2">
                             <span class="font-medium col-span-2 md:col-span-1">{{ day.day_name }}</span>
                             <DatePicker v-model="day.start_time" :disabled="!day.is_active" showIcon fluid

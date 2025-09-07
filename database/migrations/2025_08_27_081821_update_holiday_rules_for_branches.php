@@ -17,6 +17,13 @@ return new class extends Migration
             $table->dropForeign(['branch_id']);
             $table->dropColumn('branch_id');
         });
+
+        Schema::create('branch_holiday_rule', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('branch_id')->constrained()->onDelete('cascade');
+            $table->foreignId('holiday_rule_id')->constrained()->onDelete('cascade');
+            $table->timestamps();
+        });
     }
 
     /**
@@ -24,6 +31,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('branch_holiday_rule');
         Schema::table('holiday_rules', function (Blueprint $table) {
             $table->dropColumn('is_active');
             $table->foreignId('branch_id')->nullable()->constrained()->onDelete('cascade');

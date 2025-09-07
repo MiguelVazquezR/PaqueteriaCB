@@ -3,12 +3,13 @@
 namespace App\Http\Controllers\Setting;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreHolidayRuleRequest;
+use App\Http\Requests\UpdateHolidayRuleRequest;
 use App\Models\Branch;
 use App\Models\HolidayRule;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class HolidayController extends Controller implements HasMiddleware
@@ -16,7 +17,7 @@ class HolidayController extends Controller implements HasMiddleware
     public static function middleware(): array
     {
         return [
-            new Middleware('can:ver_festivos', only: ['index', 'show']),
+            new Middleware('can:ver_festivos', only: ['index']),
             new Middleware('can:crear_festivos', only: ['store']),
             new Middleware('can:editar_festivos', only: ['update']),
             new Middleware('can:eliminar_festivos', only: ['destroy']),
@@ -25,31 +26,23 @@ class HolidayController extends Controller implements HasMiddleware
 
     public function index(Request $request)
     {
-        $query = HolidayRule::with('branches:id,name');
-
-        $query->when($request->input('search'), function ($q, $search) {
-            $q->where('name', 'like', "%{$search}%");
-        });
+        $holidays = HolidayRule::with('branches:id,name')
+            ->when($request->input('search'), fn ($q, $search) => $q->where('name', 'like', "%{$search}%"))
+            ->orderBy('id')
+            ->paginate(20)
+            ->withQueryString();
 
         return Inertia::render('Setting/Holiday/Index', [
-            'holidays' => $query->orderBy('id')->paginate(20)->withQueryString(),
+            'holidays' => $holidays,
             'filters' => $request->only(['search']),
             'branches' => Branch::all(['id', 'name']),
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreHolidayRuleRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:holiday_rules,name',
-            'is_custom' => 'required|boolean',
-            'rule_definition' => 'required|array',
-            'applies_to_all' => 'required|boolean',
-            'branch_ids' => 'required_if:applies_to_all,false|array',
-            'branch_ids.*' => 'exists:branches,id',
-            'is_active' => 'required|boolean',
-        ]);
-        
+        $validated = $request->validated();
+
         $holiday = HolidayRule::create([
             'name' => $validated['name'],
             'rule_definition' => $validated['rule_definition'],
@@ -60,20 +53,12 @@ class HolidayController extends Controller implements HasMiddleware
             $holiday->branches()->sync($validated['branch_ids']);
         }
 
-        return back()->with('success', 'Dia festivo registrado.');
+        return back()->with('success', 'Día festivo registrado.');
     }
 
-    public function update(Request $request, HolidayRule $holiday)
+    public function update(UpdateHolidayRuleRequest $request, HolidayRule $holiday)
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', Rule::unique('holiday_rules')->ignore($holiday->id)],
-            'is_custom' => 'required|boolean',
-            'rule_definition' => 'required|array',
-            'applies_to_all' => 'required|boolean',
-            'branch_ids' => 'required_if:applies_to_all,false|array',
-            'branch_ids.*' => 'exists:branches,id',
-            'is_active' => 'required|boolean',
-        ]);
+        $validated = $request->validated();
 
         $holiday->update([
             'name' => $validated['name'],
@@ -87,12 +72,12 @@ class HolidayController extends Controller implements HasMiddleware
             $holiday->branches()->sync($validated['branch_ids']);
         }
 
-        return back()->with('success', 'Dia festivo actualizado.');
+        return back()->with('success', 'Día festivo actualizado.');
     }
 
     public function destroy(HolidayRule $holiday)
     {
         $holiday->delete();
-        return back()->with('success', 'Dia festivo eliminado.');
+        return back()->with('success', 'Día festivo eliminado.');
     }
 }

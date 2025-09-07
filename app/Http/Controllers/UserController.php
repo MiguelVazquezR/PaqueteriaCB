@@ -2,25 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
+use App\Http\Resources\UserResource; // Necesitarás crear este recurso
 use App\Models\Branch;
-use App\Models\Employee;
 use App\Models\User;
-use App\Models\VacationLedger;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
-use Inertia\Inertia;
-use Spatie\Permission\Models\Role;
-use App\Services\RekognitionService;
 use App\Models\Schedule;
+use App\Services\UserService;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
+use Spatie\Permission\Models\Role;
 
 class UserController extends Controller implements HasMiddleware
 {
+    public function __construct(private UserService $userService) {}
+
     public static function middleware(): array
     {
         return [
@@ -33,118 +32,51 @@ class UserController extends Controller implements HasMiddleware
 
     public function index(Request $request)
     {
-        // Consulta 1: Obtiene todos los EMPLEADOS y sus datos de usuario (si existen)
-        $employeesQuery = Employee::query()
-            ->leftJoin('users', 'employees.user_id', '=', 'users.id')
+        $query = User::query()
+            ->where('users.id', '!=', 1)
+            // 1. Carga ansiosa (Eager Loading) para obtener los datos de las relaciones.
+            // Siempre obtendremos un modelo User con su relación employee (o null).
+            ->with(['employee.branch', 'roles'])
+            // 2. Unimos con `employees` y `branches` para poder ordenar por sus columnas.
+            ->leftJoin('employees', 'users.id', '=', 'employees.user_id')
             ->leftJoin('branches', 'employees.branch_id', '=', 'branches.id')
-            ->select(
-                'users.id as user_id',
-                'users.email',
-                'users.name as user_name',
-                'users.profile_photo_path',
-                'employees.id as employee_id',
-                'employees.first_name',
-                'employees.last_name',
-                'employees.employee_number',
-                'employees.position',
-                'employees.is_active',
-                'employees.phone',
-                'branches.name as branch_name'
-            );
+            // 3. Seleccionamos todas las columnas de `users` para asegurar que obtenemos modelos Eloquent completos.
+            ->select('users.*');
 
-        // Consulta 2: Obtiene todos los USUARIOS que NO tienen un empleado asociado
-        $usersOnlyQuery = User::query()
-            ->whereDoesntHave('employee')
-            ->whereNotIn('id', [1])
-            ->select(
-                'users.id as user_id',
-                'users.email',
-                'users.name as user_name',
-                'users.profile_photo_path',
-                DB::raw('NULL as employee_id'),
-                DB::raw('NULL as first_name'),
-                DB::raw('NULL as last_name'),
-                DB::raw('NULL as employee_number'),
-                DB::raw('"Usuario del Sistema" as position'),
-                DB::raw('1 as is_active'),
-                DB::raw('NULL as phone'),
-                DB::raw('NULL as branch_name')
-            );
-
-        $query = $usersOnlyQuery->union($employeesQuery);
-        $finalQuery = DB::query()->fromSub($query, 'people');
-
-        // --- LÓGICA DE ORDENAMIENTO CORREGIDA ---
-        $sortableColumns = [
-            'employee_number' => 'employee_number',
-            'name' => 'first_name',
-            'position' => 'position',
-            'branch' => 'branch_name',
-            'status' => 'is_active',
-        ];
-
-        $sortBy = $request->input('sort_by');
-        $sortDirection = $request->input('sort_direction');
-
-        // Si se especifica una columna de ordenamiento válida, la usamos.
-        if ($sortBy && isset($sortableColumns[$sortBy])) {
-            $sortColumn = $sortableColumns[$sortBy];
-
-            // Si además se especifica una dirección, la usamos.
-            if ($sortDirection) {
-                // Ordenamiento principal
-                $finalQuery->orderBy(DB::raw("CASE WHEN $sortColumn IS NULL THEN 1 ELSE 0 END"), 'ASC'); // Nulos al final
-                $finalQuery->orderBy($sortColumn, $sortDirection);
-
-                // Ordenamiento secundario para el nombre
-                if ($sortBy === 'name') {
-                    $finalQuery->orderBy('last_name', $sortDirection);
-                }
-            } else {
-                // Si no hay dirección, aplicamos el orden por defecto
-                $finalQuery->orderBy('employee_number', 'asc');
-            }
-        } else {
-            // Si no se especifica ninguna columna, aplicamos el orden por defecto
-            $finalQuery->orderBy('employee_number', 'asc');
-        }
-
-        // --- BÚSQUEDA ---
-        $finalQuery->when($request->input('search'), function ($q, $search) {
+        // Lógica de Búsqueda
+        $query->when($request->input('search'), function ($q, $search) {
             $q->where(function ($subQ) use ($search) {
-                $subQ->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%")
-                    ->orWhere('user_name', 'like', "%{$search}%")
-                    ->orWhere('employee_number', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
+                $subQ->where('users.name', 'like', "%{$search}%")
+                    ->orWhere('users.email', 'like', "%{$search}%")
+                    ->orWhere('employees.employee_number', 'like', "%{$search}%")
+                    // Busca por nombre completo del empleado
+                    ->orWhere(DB::raw("CONCAT(employees.first_name, ' ', employees.last_name)"), 'like', "%{$search}%");
             });
         });
 
-        // --- PAGINACIÓN Y TRANSFORMACIÓN ---
-        $perPage = $request->input('per_page', 20);
-        $paginator = $finalQuery->paginate($perPage)->withQueryString();
-        $paginator->getCollection()->transform(function ($person) {
-            $name = $person->first_name ? trim($person->first_name . ' ' . $person->last_name) : $person->user_name;
+        // Lógica de Ordenamiento
+        $sortBy = $request->input('sort_by');
+        $sortDirection = $request->input('sort_direction', 'asc');
 
-            return [
-                'id' => $name,
-                'name' => $person->first_name ? trim($person->first_name . ' ' . $person->last_name) : $person->user_name,
-                'employee_number' => $person->employee_number,
-                'position' => $person->position,
-                'branch' => $person->branch_name,
-                'phone' => $person->phone,
-                'role' => $person->user_id ? ($person->employee_id ? 'Empleado' : 'Solo Usuario') : 'Solo Empleado',
-                'status' => (bool)$person->is_active,
-                'avatar_url' => $person->profile_photo_path
-                    ? Storage::url($person->profile_photo_path)
-                    : 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&color=700DBC&background=D8BBFC',
-                'user_id' => $person->user_id,
-                'employee_id' => $person->employee_id,
-            ];
-        });
+        $sortableColumns = [
+            'name' => DB::raw("CASE WHEN employees.first_name IS NOT NULL THEN CONCAT(employees.first_name, ' ', employees.last_name) ELSE users.name END"),
+            'employee_number' => 'employees.employee_number',
+            'position' => 'employees.position',
+            'branch' => 'branches.name',
+            'status' => 'employees.is_active',
+        ];
 
+        if ($sortBy && isset($sortableColumns[$sortBy])) {
+            $query->orderBy($sortableColumns[$sortBy], $sortDirection);
+        } else {
+            $query->orderBy('users.id', 'desc'); // Orden por defecto
+        }
+
+        $paginator = $query->paginate($request->input('per_page', 20))->withQueryString();
+
+        // Se corrigió el return duplicado. Ahora se pasa el recurso a la vista Inertia.
         return Inertia::render('User/Index', [
-            'users' => $paginator,
+            'users' => UserResource::collection($paginator),
             'filters' => $request->only(['search', 'sort_by', 'sort_direction']),
         ]);
     }
@@ -158,100 +90,15 @@ class UserController extends Controller implements HasMiddleware
         ]);
     }
 
-    public function store(Request $request, RekognitionService $rekognitionService)
+    public function store(StoreUserRequest $request)
     {
-        $request->validate([
-            // Información Personal y Laboral
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'phone' => 'nullable|string|max:20',
-            'birth_date' => 'nullable|date',
-            'address' => 'nullable|string|max:255',
-            'employee_number' => 'required|string|max:50|unique:employees',
-            'hire_date' => 'required|date',
-            'branch_id' => 'required|exists:branches,id',
-            'position' => 'required|string|max:255',
-            'curp' => 'nullable|string|max:18|unique:employees',
-            'rfc' => 'nullable|string|max:13|unique:employees',
-            'nss' => 'nullable|string|max:11|unique:employees',
-            'base_salary' => 'required|numeric|min:0',
-            'is_active' => 'required|boolean',
-            'schedule_id' => 'required|exists:schedules,id',
-            'termination_date' => 'required_if:is_active,false|nullable|date',
-            'termination_reason' => 'required_if:is_active,false|nullable|string|max:255',
-
-            // Contacto de Emergencia
-            'emergency_contact_name' => 'nullable|string|max:255',
-            'emergency_contact_phone' => 'nullable|string|max:20',
-            'emergency_contact_relationship' => 'nullable|string|max:255',
-
-            // Acceso al sistema (condicional)
-            'create_user_account' => 'required|boolean',
-            'email' => ['required_if:create_user_account,true', 'nullable', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required_if:create_user_account,true', 'nullable', 'string', 'min:8'],
-            'role_id' => ['required_if:create_user_account,true', 'nullable', 'exists:roles,id'],
-            'facial_image' => ['nullable', 'image', 'max:1024'], // 1MB max size
-        ]);
-
-        DB::transaction(function () use ($request, $rekognitionService) {
-            $employeeData = $request->except(['create_user_account', 'email', 'password', 'role_id', 'facial_image', 'schedule_id']);
-            $employee = Employee::create($employeeData);
-
-            // Asignar el horario al empleado
-            $employee->schedules()->attach($request->input('schedule_id'), ['start_date' => now()]);
-
-            // Si el formulario incluye una imagen facial, la procesamos y la enviamos a AWS.
-            if ($request->hasFile('facial_image')) {
-                try {
-                    // Obtenemos el contenido binario de la imagen.
-                    $imageContents = $request->file('facial_image')->get();
-                    // Llamamos a nuestro servicio para indexar el rostro.
-                    $faceId = $rekognitionService->indexFace($imageContents, $employee->employee_number);
-
-                    if ($faceId) {
-                        // Si AWS devuelve un FaceId, lo asignamos al empleado.
-                        $employee->aws_rekognition_face_id = $faceId;
-                    } else {
-                        // Si no se detecta un rostro, podemos notificar al usuario.
-                        session()->flash('warning', 'Empleado creado, pero el rostro no pudo ser procesado por Rekognition. Asegúrate de que la imagen sea clara.');
-                    }
-                } catch (\Exception $e) {
-                    // Si ocurre un error con la API de AWS, lo registramos y notificamos.
-                    Log::error("Error al indexar rostro para empleado {$employee->employee_number}: " . $e->getMessage());
-                    session()->flash('warning', 'Empleado creado, pero hubo un error de comunicación al registrar el rostro.');
-                }
-            }
-
-            if ($request->input('create_user_account')) {
-                $user = User::create([
-                    'name' => $request->input('first_name') . ' ' . $request->input('last_name'),
-                    'email' => $request->input('email'),
-                    'password' => Hash::make($request->input('password')),
-                ]);
-
-                // Si se subió una imagen, usamos el método de Jetstream para guardarla como foto de perfil.
-                if ($request->hasFile('facial_image')) {
-                    $user->updateProfilePhoto($request->file('facial_image'));
-                }
-
-                // ✨ Asignar el rol al nuevo usuario
-                $role = Role::findById($request->input('role_id'));
-                $user->assignRole($role);
-
-                // Ligamos el usuario al empleado
-                $employee->user_id = $user->id;
-                $employee->save();
-            }
-        });
-
+        $this->userService->createEmployeeAndUser($request->validated());
         return redirect()->route('users.index')->with('success', 'Usuario creado.');
     }
 
     public function edit(User $user)
     {
-        // Cargamos ambas relaciones: el empleado y los roles asignados al usuario.
         $user->load(['employee.schedules', 'roles:id']);
-
         return Inertia::render('User/Edit', [
             'user' => $user,
             'branches' => Branch::where('is_active', true)->get(['id', 'name']),
@@ -260,139 +107,30 @@ class UserController extends Controller implements HasMiddleware
         ]);
     }
 
-    public function update(Request $request, User $user, RekognitionService $rekognitionService)
+    public function update(UpdateUserRequest $request, User $user)
     {
-        $employee = $user->employee;
-
-        $request->validate([
-            // Información Personal y Laboral
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'phone' => 'nullable|string|max:20',
-            'birth_date' => 'nullable|date',
-            'address' => 'nullable|string|max:255',
-            'employee_number' => ['required', 'string', 'max:50', Rule::unique('employees')->ignore($employee?->id)],
-            'hire_date' => 'required|date',
-            'branch_id' => 'required|exists:branches,id',
-            'position' => 'required|string|max:255',
-            'curp' => ['nullable', 'string', 'max:18', Rule::unique('employees')->ignore($employee?->id)],
-            'rfc' => ['nullable', 'string', 'max:13', Rule::unique('employees')->ignore($employee?->id)],
-            'nss' => ['nullable', 'string', 'max:11', Rule::unique('employees')->ignore($employee?->id)],
-            'base_salary' => 'required|numeric|min:0',
-            'is_active' => 'required|boolean',
-            'schedule_id' => 'required|exists:schedules,id',
-            'termination_date' => 'required_if:is_active,false|nullable|date',
-            'termination_reason' => 'required_if:is_active,false|nullable|string|max:255',
-
-            // Contacto de Emergencia
-            'emergency_contact_name' => 'nullable|string|max:255',
-            'emergency_contact_phone' => 'nullable|string|max:20',
-            'emergency_contact_relationship' => 'nullable|string|max:50',
-
-            // Acceso al sistema
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'password' => ['nullable', 'string', 'min:8'], // La contraseña es opcional al editar
-            'role_id' => ['required', 'exists:roles,id'],
-            'facial_image' => ['nullable', 'image', 'max:1024'],
-            'delete_photo' => 'boolean',
-        ]);
-
-        DB::transaction(function () use ($request, $user, $employee, $rekognitionService) {
-            // Actualizar el registro del usuario
-            $user->update([
-                'name' => $request->input('first_name') . ' ' . $request->input('last_name'),
-                'email' => $request->input('email'),
-            ]);
-
-            if ($employee) {
-                $currentFaceId = $employee->aws_rekognition_face_id;
-
-                // Caso 1: Se sube una NUEVA imagen facial.
-                if ($request->hasFile('facial_image')) {
-                    // Si ya existía un rostro en AWS, lo eliminamos para evitar duplicados.
-                    if ($currentFaceId) {
-                        $rekognitionService->deleteFace($currentFaceId);
-                    }
-                    // Indexamos el nuevo rostro en la colección.
-                    $imageContents = $request->file('facial_image')->get();
-                    $newFaceId = $rekognitionService->indexFace($imageContents, $employee->employee_number);
-                    $employee->aws_rekognition_face_id = $newFaceId;
-                }
-                // Caso 2: Se marca la casilla para ELIMINAR la foto existente.
-                elseif ($request->input('delete_photo') && $currentFaceId) {
-                    // Eliminamos el rostro de la colección de AWS.
-                    $rekognitionService->deleteFace($currentFaceId);
-                    // Eliminamos la referencia en nuestra base de datos.
-                    $employee->aws_rekognition_face_id = null;
-                }
-            }
-
-            // actualizar o eliminar la foto
-            if ($request->hasFile('facial_image')) {
-                $user->updateProfilePhoto($request->file('facial_image'));
-            } elseif ($request->input('delete_photo')) {
-                $user->deleteProfilePhoto();
-            }
-
-            // ✨ Sincronizar el rol (quita los anteriores y asigna el nuevo)
-            $role = Role::findById($request->input('role_id'));
-            $user->syncRoles($role);
-
-            // Si se proporcionó una nueva contraseña, la actualizamos
-            if ($request->filled('password')) {
-                $user->password = Hash::make($request->input('password'));
-                $user->save();
-            }
-
-            if ($employee) {
-                $employeeData = $request->except(['email', 'password', 'role_id', 'facial_image', 'schedule_id']);
-                // Limpiar los campos de baja si el empleado se reactiva
-                if ($request->input('is_active')) {
-                    $employeeData['termination_date'] = null;
-                    $employeeData['termination_reason'] = null;
-                }
-                $employee->update($employeeData);
-                // Sincronizar el horario
-                $employee->schedules()->sync([$request->input('schedule_id') => ['start_date' => now()]]);
-            }
-        });
-
+        $this->userService->updateEmployeeAndUser($user, $request->validated());
         return redirect()->route('users.index')->with('success', 'Usuario actualizado.');
     }
 
     public function show(User $user)
     {
-        $user->load(['employee.branch', 'employee.schedules.details']);
-        $userData = $user->toArray();
-
-        // ✨ Obtener el historial desde la nueva tabla
-        if ($user->employee) {
-            $userData['vacation_history'] = VacationLedger::where('employee_id', $user->employee->id)
-                ->orderBy('date')
-                ->get();
-        } else {
-            $userData['vacation_history'] = [];
-        }
-
+        $user->load(['employee.branch', 'employee.schedules.details', 'employee.vacationLedger']);
+        // return UserResource::make($user);
         return Inertia::render('User/Show', [
-            'user' => $userData,
+            'user' => UserResource::make($user),
         ]);
     }
 
     public function destroy(User $user)
     {
-        // Regla de negocio: No permitir la eliminación del primer usuario (super admin).
         if ($user->id === 1) {
             return back()->with('error', 'El usuario administrador principal no puede ser eliminado.');
         }
 
-        DB::transaction(function () use ($user) {
-            // Eliminar al empleado asociado primero (si existe)
-            $user->employee?->delete();
-
-            // Eliminar al usuario
-            $user->delete();
-        });
+        // La lógica de la transacción ahora puede estar en un método del service si se vuelve más compleja
+        $user->employee?->delete();
+        $user->delete();
 
         return redirect()->route('users.index')->with('success', 'Usuario eliminado.');
     }
