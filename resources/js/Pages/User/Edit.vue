@@ -25,11 +25,16 @@ const items = ref([
 ]);
 const op = ref(); // Referencia para el Popover
 const scheduleOp = ref(); // Ref para el popover del horario
-const imagePreview = ref(props.user.profile_photo_path ? props.user.profile_photo_url : null);
+const imagePreview = ref(props.user.avatar_url || null); // ✨ Usa la URL del avatar si existe
 const fileUploadRef = ref(null);
 const relationships = [
     'Madre/Padre', 'Hermano/Hermana', 'Esposo/Esposa', 'Tío/Tía', 'Abuelo/Abuela', 'Otro',
 ];
+
+// Corregir el manejo de fechas que vienen como string desde el backend
+const parseDate = (dateString) => {
+    return dateString ? new Date(dateString) : null;
+};
 
 // Inicializamos el formulario con los datos del usuario y su empleado
 const form = useForm({
@@ -38,12 +43,12 @@ const form = useForm({
     first_name: props.user.employee?.first_name || '',
     last_name: props.user.employee?.last_name || '',
     phone: props.user.employee?.phone || '',
-    birth_date: props.user.employee?.birth_date || null,
+    birth_date: parseDate(props.user.employee?.birth_date),
     address: props.user.employee?.address || '',
 
     // Info Laboral
     employee_number: props.user.employee?.employee_number || '',
-    hire_date: props.user.employee?.hire_date || null,
+    hire_date: parseDate(props.user.employee?.hire_date),
     branch_id: props.user.employee?.branch_id || null,
     position: props.user.employee?.position || '',
     schedule_id: (props.user.employee?.schedules && props.user.employee.schedules.length > 0) ? props.user.employee.schedules[0].id : null,
@@ -52,7 +57,7 @@ const form = useForm({
     nss: props.user.employee?.nss || '',
     base_salary: props.user.employee?.base_salary || null,
     is_active: props.user.employee?.is_active ?? true,
-    termination_date: props.user.employee?.termination_date || null,
+    termination_date: parseDate(props.user.employee?.termination_date),
     termination_reason: props.user.employee?.termination_reason || '',
 
     // Contacto Emergencia
@@ -83,24 +88,40 @@ const selectedSchedule = computed(() => {
 });
 
 // --- Methods ---
+/**
+ * ✨ SOLUCIÓN: Usamos FileReader para la vista previa, igual que en Create.vue.
+ * Esto asegura que funcione en producción.
+ */
 const onFileSelect = (event) => {
     const file = event.files[0];
     if (file) {
         form.facial_image = file;
-        imagePreview.value = URL.createObjectURL(file);
-        form.delete_photo = false; // Si se sube una nueva, no se borra
+        form.delete_photo = false; // Si se sube una nueva, no se borra la anterior.
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            imagePreview.value = e.target.result;
+        };
+        reader.readAsDataURL(file);
     }
 };
 
-const clearImage = () => {
+/**
+ * ✨ MEJORA: Lógica para quitar la imagen existente o la nueva.
+ */
+const clearImage = (clearCallback) => {
     form.facial_image = null;
     imagePreview.value = null;
-    form.delete_photo = true; // Indicar que se debe borrar la foto al guardar
-    // ✨ Usamos la referencia para limpiar el estado interno del componente
+    form.delete_photo = true; // Se marca para que el backend elimine la foto guardada.
+
+    if (clearCallback) {
+        clearCallback();
+    }
     if (fileUploadRef.value) {
         fileUploadRef.value.clear();
     }
 };
+
 
 const submit = () => {
     // Usamos POST porque los navegadores no soportan subida de archivos con PUT nativamente.
@@ -133,7 +154,6 @@ const formatTime = (timeString) => {
 const getDayFromSchedule = (dayOfWeek) => {
     return selectedSchedule.value?.details.find(d => d.day_of_week === dayOfWeek);
 };
-
 </script>
 
 <template>
@@ -159,14 +179,14 @@ const getDayFromSchedule = (dayOfWeek) => {
                             <InputText id="first_name" v-model="form.first_name" class="w-full"
                                 :invalid="!!form.errors.first_name" />
                             <small v-if="form.errors.first_name" class="text-red-500 mt-1">{{ form.errors.first_name
-                            }}</small>
+                                }}</small>
                         </div>
                         <div>
                             <InputLabel for="last_name" value="Apellidos*" />
                             <InputText id="last_name" v-model="form.last_name" class="w-full"
                                 :invalid="!!form.errors.last_name" />
                             <small v-if="form.errors.last_name" class="text-red-500 mt-1">{{ form.errors.last_name
-                            }}</small>
+                                }}</small>
                         </div>
                         <div>
                             <InputLabel for="phone" value="Teléfono" />
@@ -202,7 +222,7 @@ const getDayFromSchedule = (dayOfWeek) => {
                             <DatePicker id="hire_date" v-model="form.hire_date" dateFormat="dd/mm/yy" showIcon fluid
                                 iconDisplay="input" :invalid="!!form.errors.hire_date" class="w-full" />
                             <small v-if="form.errors.hire_date" class="text-red-500 mt-1">{{ form.errors.hire_date
-                            }}</small>
+                                }}</small>
                         </div>
                         <div>
                             <InputLabel for="branch_id" value="Sucursal asignada*" />
@@ -210,14 +230,14 @@ const getDayFromSchedule = (dayOfWeek) => {
                                 optionValue="id" size="large" placeholder="Selecciona la sucursal"
                                 :invalid="!!form.errors.branch_id" class="w-full" />
                             <small v-if="form.errors.branch_id" class="text-red-500 mt-1">{{ form.errors.branch_id
-                            }}</small>
+                                }}</small>
                         </div>
                         <div>
                             <InputLabel for="position" value="Puesto*" />
                             <InputText id="position" v-model="form.position" class="w-full"
                                 :invalid="!!form.errors.position" />
                             <small v-if="form.errors.position" class="text-red-500 mt-1">{{ form.errors.position
-                            }}</small>
+                                }}</small>
                         </div>
                         <div>
                             <div class="flex items-center gap-2">
@@ -228,7 +248,7 @@ const getDayFromSchedule = (dayOfWeek) => {
                                 optionValue="id" placeholder="Selecciona un horario" class="w-full"
                                 :invalid="!!form.errors.schedule_id" />
                             <small v-if="form.errors.schedule_id" class="text-red-500 mt-1">{{ form.errors.schedule_id
-                            }}</small>
+                                }}</small>
                         </div>
                         <div>
                             <InputLabel for="curp" value="CURP" />
@@ -247,7 +267,7 @@ const getDayFromSchedule = (dayOfWeek) => {
                             <InputNumber id="base_salary" v-model="form.base_salary" mode="currency" currency="MXN"
                                 locale="es-MX" class="w-full" :invalid="!!form.errors.base_salary" />
                             <small v-if="form.errors.base_salary" class="text-red-500 mt-1">{{ form.errors.base_salary
-                            }}</small>
+                                }}</small>
                         </div>
                         <div>
                             <InputLabel for="is_active" value="Estatus*" />
@@ -308,11 +328,11 @@ const getDayFromSchedule = (dayOfWeek) => {
                     </div>
                     <FileUpload ref="fileUploadRef" name="facial_image" @select="onFileSelect" :showUploadButton="false"
                         :showCancelButton="false" accept="image/*" :maxFileSize="1024000">
-                        <template #header="{ chooseCallback, clearCallback, files }">
+                        <template #header="{ chooseCallback }">
                             <Button label="Subir imagen" icon="pi pi-upload" outlined @click="chooseCallback" />
                         </template>
-                        <template #content="{ chooseCallback, clearCallback, files }">
-                            <!-- ✨ El v-if ahora comprueba imagePreview en lugar de files.length -->
+                        <template #content="{ clearCallback }">
+                             <!-- ✨ El v-if ahora comprueba imagePreview en lugar de files.length -->
                             <div v-if="imagePreview"
                                 class="flex flex-col items-center justify-center gap-4 p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
                                 <img :src="imagePreview" alt="Vista previa"
@@ -323,14 +343,12 @@ const getDayFromSchedule = (dayOfWeek) => {
                             <div v-else
                                 class="flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-center">
                                 <i class="pi pi-image text-5xl text-gray-400 dark:text-gray-500"></i>
-                                <p class="text-gray-500 dark:text-gray-400">Sube o arrastra una nueva foto para
-                                    actualizar el
-                                    registro.</p>
+                                <p class="text-gray-500 dark:text-gray-400">Sube o arrastra una nueva foto para actualizar el registro.</p>
                             </div>
                         </template>
                     </FileUpload>
                     <small v-if="form.errors.facial_image" class="text-red-500 mt-1">{{ form.errors.facial_image
-                    }}</small>
+                        }}</small>
                     <Divider />
 
                     <!-- === ACCESO AL SISTEMA === -->
@@ -342,16 +360,16 @@ const getDayFromSchedule = (dayOfWeek) => {
                         <div>
                             <InputLabel for="email" value="Correo electrónico*" />
                             <InputText id="email" v-model="form.email" type="email" class="w-full"
-                                :invalid="!!form.errors.email" />
+                                :invalid="!!form.errors.email" autocomplete="off" />
                             <small v-if="form.errors.email" class="text-red-500 mt-1">{{ form.errors.email }}</small>
                         </div>
                         <div>
-                            <InputLabel for="password" value="Nueva Contraseña" />
+                            <InputLabel for="password" value="Contraseña" />
                             <Password id="password" v-model="form.password" :feedback="false" toggleMask class="w-full"
-                                inputClass="w-full" :invalid="!!form.errors.password"
-                                placeholder="Dejar en blanco para no cambiar" />
-                            <small v-if="form.errors.password" class="text-red-500 mt-1">{{ form.errors.password
-                            }}</small>
+                                inputClass="w-full" :invalid="!!form.errors.password" autocomplete="new-password" />
+                            <small class="text-gray-500 mt-1">Deja en blanco para no cambiar la contraseña.</small>
+                            <small v-if="form.errors.password" class="text-red-500 block mt-1">{{ form.errors.password
+                                }}</small>
                         </div>
                         <div class="md:col-span-2">
                             <div class="flex items-center gap-2">
@@ -363,7 +381,7 @@ const getDayFromSchedule = (dayOfWeek) => {
                                 optionValue="id" placeholder="Selecciona un rol" class="w-full"
                                 :invalid="!!form.errors.role_id" />
                             <small v-if="form.errors.role_id" class="text-red-500 mt-1">{{ form.errors.role_id
-                            }}</small>
+                                }}</small>
                         </div>
                     </div>
 
@@ -379,7 +397,7 @@ const getDayFromSchedule = (dayOfWeek) => {
         </div>
     </AppLayout>
 
-    <!-- ✨ Popover para Permisos ✨ -->
+    <!-- Popovers -->
     <Popover ref="op">
         <div class="p-2 w-72">
             <h3 class="font-bold text-lg mb-2">Detalles del rol</h3>
@@ -397,8 +415,7 @@ const getDayFromSchedule = (dayOfWeek) => {
             </div>
         </div>
     </Popover>
-
-    <!-- POPOVER PARA DETALLES DEL HORARIO -->
+    
     <Popover ref="scheduleOp">
         <div class="p-4 w-96">
             <h3 class="font-bold text-lg mb-2">Detalles del horario</h3>

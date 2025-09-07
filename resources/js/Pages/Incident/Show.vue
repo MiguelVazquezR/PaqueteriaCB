@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, computed } from 'vue';
-import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { debounce } from 'lodash';
 import { format } from 'date-fns';
@@ -35,7 +35,7 @@ const commentModalVisible = ref(false);
 const currentEmployeeForComment = ref(null);
 const commentText = ref('');
 
-// ✨ State para el modal de edición de asistencia
+// State para el modal de edición de asistencia
 const attendanceModalVisible = ref(false);
 const currentDayForEdit = ref(null);
 const currentEmployeeForEdit = ref(null);
@@ -46,7 +46,7 @@ const attendanceForm = useForm({
     exit_time: null,
 });
 
-// ✨ State para el panel de resumen de descansos
+// State para el panel de resumen de descansos
 const op = ref();
 const selectedBreaks = ref([]);
 const breakModalVisible = ref(false);
@@ -321,8 +321,10 @@ const confirmDeleteBreak = (breakItem) => {
                             <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100 m-0">Semana {{
                                 period.week_number
                                 }}</h1>
-                            <p class="text-sm text-gray-500">{{ period.start_date_formatted_short }} - {{
-                                period.end_date_formatted_full }}</p>
+                            <p class="text-sm text-gray-500">
+                                {{ formatDate(period.start_date, "EEE, dd 'de' MMM/yyyy") }} -
+                                {{ formatDate(period.end_date, "EEE, dd 'de' MMM/yyyy") }}
+                            </p>
                         </div>
                         <Button icon="pi pi-chevron-right" text rounded :disabled="!navigation.next_period_id"
                             @click="navigation.next_period_id && router.get(route('incidents.show', navigation.next_period_id))" />
@@ -404,7 +406,7 @@ const confirmDeleteBreak = (breakItem) => {
                                     <!-- --- CAMBIO: --- 2. Descanso programado (y no trabajado) -->
                                     <template v-else-if="day.is_rest_day && !day.entry_time && !day.incident">
                                         <td colspan="5" class="px-2 py-1">
-                                            <Tag value="Descanso" severity="succsess" class="w-full text-center" />
+                                            <Tag value="Descanso" severity="success" class="w-full text-center" />
                                         </td>
                                     </template>
 

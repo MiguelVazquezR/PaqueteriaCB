@@ -20,9 +20,7 @@ class IncidentController extends Controller implements HasMiddleware
 {
     use HandlesQueryFiltering;
 
-    public function __construct(protected IncidentService $incidentService)
-    {
-    }
+    public function __construct(protected IncidentService $incidentService) {}
 
     public static function middleware(): array
     {
@@ -54,13 +52,40 @@ class IncidentController extends Controller implements HasMiddleware
     {
         $employeesData = $this->incidentService->getEmployeeDataForPeriod($period, $request);
 
+        // Se busca el periodo anterior basándose en la fecha de inicio.
+        $previousPeriod = PayrollPeriod::where('start_date', '<', $period->start_date)
+            ->orderBy('start_date', 'desc')
+            ->first();
+
+        // Se busca el periodo siguiente.
+        $nextPeriod = PayrollPeriod::where('start_date', '>', $period->start_date)
+            ->orderBy('start_date', 'asc')
+            ->first();
+
         return Inertia::render('Incident/Show', [
             'period' => $period,
             'employeesData' => $employeesData,
             'branches' => Branch::all(['id', 'name']),
             'filters' => $request->only(['branch_id', 'search']),
             'incidentTypes' => IncidentType::all(['id', 'name']),
+            'navigation' => [
+                'previous_period_id' => $previousPeriod?->id,
+                'next_period_id'     => $nextPeriod?->id,
+            ],
         ]);
+    }
+
+    public function updateComment(Request $request)
+    {
+        $validated = $request->validate([
+            'employee_id' => 'required|exists:employees,id',
+            'period_id'   => 'required|exists:payroll_periods,id',
+            'comments'    => 'nullable|string',
+        ]);
+
+        $this->incidentService->updateOrCreateComment($validated);
+
+        return back()->with('success', 'Comentario actualizado.');
     }
 
     public function storeDayIncident(StoreDayIncidentRequest $request)
@@ -124,4 +149,3 @@ class IncidentController extends Controller implements HasMiddleware
         return back()->with('success', 'Descanso eliminado.');
     }
 }
-

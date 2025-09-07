@@ -114,7 +114,7 @@ class Employee extends Model
             ->withTimestamps();
     }
 
-     /**
+    /**
      * Get the vacation ledger history for the employee.
      */
     public function vacationLedger(): HasMany
@@ -122,5 +122,13 @@ class Employee extends Model
         // Un empleado tiene muchos registros en el historial de vacaciones.
         // Se ordena por fecha y luego por ID para mantener un orden consistente.
         return $this->hasMany(VacationLedger::class)->orderBy('date')->orderBy('id');
+    }
+
+    /**
+     * Get all period-specific notes for the employee.
+     */
+    public function periodNotes()
+    {
+        return $this->hasMany(EmployeePeriodNote::class);
     }
 }

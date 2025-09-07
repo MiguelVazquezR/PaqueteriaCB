@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Attendance;
 use App\Models\Employee;
+use App\Models\EmployeePeriodNote;
 use App\Models\Incident;
 use App\Models\IncidentType;
 use App\Models\PayrollPeriod;
@@ -14,6 +15,19 @@ use Illuminate\Http\Request;
 class IncidentService
 {
     public function __construct(protected VacationService $vacationService, protected HolidayService $holidayService) {}
+
+    public function updateOrCreateComment(array $data): void
+    {
+        EmployeePeriodNote::updateOrCreate(
+            [
+                'employee_id'       => $data['employee_id'],
+                'payroll_period_id' => $data['period_id'],
+            ],
+            [
+                'comments' => $data['comments'],
+            ]
+        );
+    }
 
     public function getEmployeeDataForPeriod(PayrollPeriod $period, Request $request)
     {
@@ -27,7 +41,7 @@ class IncidentService
                 'schedules.details',
                 'incidents' => fn($q) => $q->whereBetween('start_date', [$startDate, $endDate])->with('incidentType'),
                 'attendances' => fn($q) => $q->whereBetween('created_at', [$startDate, $endDate->copy()->endOfDay()]),
-                'payrolls' => fn($q) => $q->where('start_date', $startDate),
+                'periodNotes' => fn($q) => $q->where('payroll_period_id', $period->id),
             ])
             ->when($request->input('branch_id'), fn($q, $id) => $q->where('branch_id', $id))
             ->when($request->input('search'), function ($q, $search) {
@@ -42,7 +56,7 @@ class IncidentService
             'position' => $employee->position,
             'avatar_url' => $employee->user?->profile_photo_url,
             'branch_name' => $employee->branch->name,
-            'comments' => $employee->payrolls->first()?->comments,
+            'comments' => $employee->periodNotes->first()?->comments,
             'daily_data' => $this->getDailyDataForEmployee($employee, CarbonPeriod::create($startDate, $endDate)),
         ]);
     }
@@ -298,7 +312,6 @@ class IncidentService
                 'incidents' => fn($q) => $q->whereBetween('start_date', [$startDate, $endDate])->with('incidentType'),
                 'attendances' => fn($q) => $q->whereBetween('created_at', [$startDate, $endDate->copy()->endOfDay()]),
                 'schedules.details',
-                'payrolls' => fn($q) => $q->where('start_date', $startDate)
             ])
             ->get()
             ->groupBy('branch.name');
