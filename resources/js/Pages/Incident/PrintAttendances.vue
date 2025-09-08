@@ -59,10 +59,32 @@ const print = () => {
                 <div v-for="employee in employeesData" :key="employee.id"
                     class="bg-white dark:bg-neutral-900 shadow-md rounded-lg px-6 py-3 print:py-1 print:shadow-none print:border print:rounded-none print:flex print:flex-col print:justify-between print:break-inside-avoid">
                     <div>
-                        <!-- ... (Cabecera del empleado sin cambios) ... -->
+                         <!-- Cabecera del empleado -->
+                        <div class="flex justify-between items-start pb-2 border-b">
+                            <div>
+                                <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 m-0">{{ employee.name }}</h2>
+                                <p class="text-sm text-gray-500">N° {{ employee.employee_number }} • {{
+                                    employee.position }}</p>
+                            </div>
+                            <div class="text-right text-sm">
+                                <p class="font-semibold">Semana {{ period.week_number }}. Del {{
+                                    formatDate(period.start_date, 'dd/MM/yy') }} al {{ formatDate(period.end_date,
+                                        'dd/MM/yy') }}</p>
+                                <p class="text-gray-500">{{ employee.branch_name }}</p>
+                            </div>
+                        </div>
                         <div class="overflow-x-auto mt-1">
                             <table class="w-full text-sm text-left">
-                                <!-- ... (thead sin cambios) ... -->
+                               <thead class="text-xs text-gray-700 dark:text-gray-400 uppercase">
+                                    <tr>
+                                        <th class="py-2">Día</th>
+                                        <th class="py-2">Entrada</th>
+                                        <th class="py-2">Salida</th>
+                                        <th class="py-2">T. Descanso</th>
+                                        <th class="py-2">T. Extra</th>
+                                        <th class="py-2">Horas totales</th>
+                                    </tr>
+                                </thead>
                                 <tbody>
                                     <tr v-for="day in employee.daily_data" :key="day.date"
                                         class="border-b dark:border-gray-700">

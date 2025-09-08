@@ -35,7 +35,7 @@ class BonusService
 
                 return [
                     'id' => $employee->id,
-                    'name' => $employee->full_name, // Using accessor from Employee model
+                    'name' => $employee->full_name,
                     'employee_number' => $employee->employee_number,
                     'punctuality_earned' => $punctualityDetail?->calculated_amount > 0,
                     'attendance_earned' => $attendanceDetail?->calculated_amount > 0,
@@ -52,15 +52,33 @@ class BonusService
      */
     public function getPrintableReportData(BonusReport $report)
     {
-        $report->load('details.employee.branch', 'details.bonus');
-        $employeeData = $this->getTransformedReportDetails($report); // Reuse the same transformation logic
+        // 1. Llama al método auxiliar para obtener los datos base transformados.
+        $transformedEmployees = $this->getTransformedReportDetails($report);
 
-        // We just need to add the branch name and group by it
-        return $employeeData->map(function ($data) use ($report) {
-            $employee = $report->details->firstWhere('employee_id', $data['id'])->employee;
-            $data['branch_name'] = $employee->branch->name;
-            return $data;
-        })->groupBy('branch_name');
+        // 2. Para evitar N+1 queries, creamos un mapa de consulta de employee_id => branch_name.
+        //    Aseguramos que la relación anidada esté cargada.
+        $report->load('details.employee.branch');
+        $branchMap = $report->details->unique('employee_id')->pluck('employee.branch.name', 'employee_id');
+
+        // 3. Mapeamos los datos transformados para añadir el nombre de la sucursal
+        //    y ajustar las claves para que coincidan con lo que espera la vista de Vue.
+        $employeesWithBranch = $transformedEmployees->map(function ($employeeData) use ($branchMap) {
+            $employeeData['branch_name'] = $branchMap[$employeeData['id']] ?? 'Sucursal Desconocida';
+
+            // Renombrar claves para que coincidan con el componente Vue 'Print.vue'
+            $employeeData['employee_id'] = $employeeData['id'];
+            $employeeData['employee_name'] = $employeeData['name'];
+            $employeeData['total_late_minutes'] = $employeeData['late_minutes'];
+            $employeeData['total_unjustified_absences'] = $employeeData['unjustified_absences'];
+
+            // Eliminar las claves antiguas para limpiar el payload
+            unset($employeeData['id'], $employeeData['name'], $employeeData['late_minutes'], $employeeData['unjustified_absences']);
+
+            return $employeeData;
+        });
+
+        // 4. Agrupamos la colección final por el nombre de la sucursal.
+        return $employeesWithBranch->groupBy('branch_name');
     }
 
     /**

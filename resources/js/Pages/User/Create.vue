@@ -365,14 +365,14 @@ const getDayFromSchedule = (dayOfWeek) => {
                     </div>
                     <div v-if="form.create_user_account" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                         <div>
-                            <InputLabel for="email" value="Correo electrónico*" />
-                            <InputText id="email" v-model="form.email" type="email" class="w-full"
+                            <InputLabel value="Correo electrónico*" />
+                            <InputText v-model="form.email" class="w-full"
                                 :invalid="!!form.errors.email" autocomplete="off" />
                             <small v-if="form.errors.email" class="text-red-500 mt-1">{{ form.errors.email }}</small>
                         </div>
                         <div>
-                            <InputLabel for="password" value="Contraseña*" />
-                            <Password id="password" v-model="form.password" :feedback="false" toggleMask class="w-full"
+                            <InputLabel value="Contraseña*" />
+                            <Password v-model="form.password" :feedback="false" toggleMask class="w-full"
                                 inputClass="w-full" :invalid="!!form.errors.password" autocomplete="new-password" />
                             <small v-if="form.errors.password" class="text-red-500 mt-1">{{ form.errors.password
                                 }}</small>

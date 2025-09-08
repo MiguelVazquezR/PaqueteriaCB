@@ -5,14 +5,14 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Employee;
 use App\Models\BonusReport;
-use App\Models\Bonus; // Se importa el nuevo modelo
+use App\Models\Bonus;
 use Carbon\Carbon;
 
 class GenerateBonusReport extends Command
 {
     protected $signature = 'bonuses:generate {--month=}';
     protected $description = 'Calculates and generates the bonus report for a specific month in a draft state.';
-    
+
     public function handle()
     {
         $month = $this->option('month') ? Carbon::createFromFormat('Y-m', $this->option('month')) : Carbon::now()->subMonth();
@@ -50,15 +50,14 @@ class GenerateBonusReport extends Command
                         $earned = $punctualityData['earned'];
                         $details = ['late_minutes' => $punctualityData['late_minutes']];
                         break;
-                    
+
                     case 'attendance':
-                        // --- CAMBIO CLAVE: --- Se pasa el ID del tipo de incidencia desde las reglas del bono.
                         $attendanceData = $this->calculateAttendanceBonusFor(
                             $employee,
                             $periodStart,
                             $periodEnd,
                             $bonus->rules['threshold_absences'],
-                            $bonus->rules['unjustified_absence_type_id'] // Se pasa el ID desde la BD
+                            $bonus->rules['unjustified_absence_type_id']
                         );
                         $earned = $attendanceData['earned'];
                         $details = ['unjustified_absences' => $attendanceData['unjustified_absences']];
@@ -78,7 +77,7 @@ class GenerateBonusReport extends Command
             }
             $bar->advance();
         }
-        
+
         $bar->finish();
         $this->info("\nReporte de bonos para {$periodStart->toDateString()} generado en modo Borrador.");
         return self::SUCCESS;
@@ -86,8 +85,10 @@ class GenerateBonusReport extends Command
 
     private function calculatePunctualityBonusFor(Employee $employee, Carbon $start, Carbon $end, int $threshold): array
     {
+        // --- Se añade la condición para ignorar los retardos marcados.
         $totalLateMinutes = $employee->attendances()
             ->whereBetween('created_at', [$start, $end])
+            ->where('late_ignored', false)
             ->sum('late_minutes');
 
         return [
@@ -96,11 +97,10 @@ class GenerateBonusReport extends Command
         ];
     }
 
-    // --- CAMBIO: --- El método ahora acepta el ID del tipo de incidencia como parámetro.
     private function calculateAttendanceBonusFor(Employee $employee, Carbon $start, Carbon $end, int $threshold, int $unjustifiedAbsenceTypeId): array
     {
         $unjustifiedAbsences = $employee->incidents()
-            ->where('incident_type_id', $unjustifiedAbsenceTypeId) // Se usa el parámetro en lugar de la constante
+            ->where('incident_type_id', $unjustifiedAbsenceTypeId)
             ->whereBetween('start_date', [$start, $end])
             ->count();
 
@@ -110,4 +110,3 @@ class GenerateBonusReport extends Command
         ];
     }
 }
-

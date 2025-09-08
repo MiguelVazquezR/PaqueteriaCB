@@ -11,9 +11,7 @@ use Inertia\Inertia;
 
 class BonusController extends Controller implements HasMiddleware
 {
-    public function __construct(protected BonusService $bonusService)
-    {
-    }
+    public function __construct(protected BonusService $bonusService) {}
 
     public static function middleware(): array
     {
@@ -49,7 +47,10 @@ class BonusController extends Controller implements HasMiddleware
         $branches = $this->bonusService->getPrintableReportData($report);
 
         return Inertia::render('Bonus/Print', [
-            'report' => new BonusReportResource($report),
+            'report' => [
+                'period' => $report->period,
+                'created_at' => $report->created_at,
+            ],
             'branches' => $branches,
         ]);
     }
