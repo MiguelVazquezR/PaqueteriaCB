@@ -98,7 +98,6 @@ const finalizeOptions = ref([
                     </div>
                 </div>
                 <div class="overflow-x-auto">
-                    <!-- --- CAMBIO: --- La tabla ahora muestra a todos los empleados y sus resultados -->
                     <DataTable :value="employeeBonuses" dataKey="id">
                         <Column field="employee_number" header="N° Empleado"></Column>
                         <Column field="name" header="Empleado"></Column>
