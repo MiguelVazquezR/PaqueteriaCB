@@ -57,14 +57,24 @@ class VacationService
             ];
 
             if ($data['type'] === 'taken') {
-                $startDate = Carbon::parse($data['start_date']);
-                $endDate = Carbon::parse($data['end_date']);
+                // Se verifica si se proveyó una fecha única (desde el registro de incidencias)
+                // o un rango de fechas (desde una solicitud de vacaciones).
+                if (isset($data['date'])) {
+                    $startDate = Carbon::parse($data['date']);
+                    $endDate = Carbon::parse($data['date']);
+                } else {
+                    $startDate = Carbon::parse($data['start_date']);
+                    $endDate = Carbon::parse($data['end_date']);
+                }
 
                 $ledgerData['date'] = $startDate;
-                $ledgerData['days'] = -($startDate->diffInDays($endDate) + 1); // Days are negative
+                $ledgerData['days'] = - ($startDate->diffInDays($endDate) + 1); // Días en negativo
 
-                // Also create a corresponding incident
-                $this->createVacationIncident($employee, $startDate, $endDate, $data['description'] ?? null);
+                // Se añade un parámetro opcional 'create_incident' para controlar este comportamiento.
+                // Si no se especifica, por defecto crea la incidencia para mantener la compatibilidad.
+                if ($data['create_incident'] ?? true) {
+                    $this->createVacationIncident($employee, $startDate, $endDate, $data['description'] ?? null);
+                }
             } else {
                 $ledgerData['date'] = Carbon::now();
                 $ledgerData['days'] = $data['days'];

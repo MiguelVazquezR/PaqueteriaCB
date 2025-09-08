@@ -195,10 +195,14 @@ class IncidentService
         if ($vacationType && $incident->incident_type_id == $vacationType->id) {
             $this->vacationService->createTransaction($employee, [
                 'type' => 'taken',
-                'days' => -1,
+                // 'days' => -1,
                 'date' => $date,
                 'description' => 'Vacaciones registradas desde incidencias.',
+                'create_incident' => false,
             ]);
+
+            // Guardar notas
+            $incident->update(['notes' => 'Vacaciones registradas desde incidencias.']);
         }
     }
 
