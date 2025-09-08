@@ -299,36 +299,88 @@ class IncidentService
         }
     }
 
-    // Lógica movida desde `prePayroll`
     public function getPrePayrollData(PayrollPeriod $period)
     {
+        // --- 1. CONFIGURACIÓN INICIAL ---
         $startDate = Carbon::parse($period->start_date);
         $endDate = Carbon::parse($period->end_date);
         $dateRange = CarbonPeriod::create($startDate, $endDate);
 
-        $employees = Employee::activeDuring($startDate, $endDate)
+        // --- 2. CONSULTA DE EMPLEADOS Y SUS RELACIONES ---
+        $employees = Employee::query()
+            ->where('is_active', true)
+            ->where('hire_date', '<=', $endDate)
             ->with([
                 'branch',
                 'incidents' => fn($q) => $q->whereBetween('start_date', [$startDate, $endDate])->with('incidentType'),
                 'attendances' => fn($q) => $q->whereBetween('created_at', [$startDate, $endDate->copy()->endOfDay()]),
                 'schedules.details',
+                'periodNotes' => fn($q) => $q->where('payroll_period_id', $period->id),
             ])
             ->get()
             ->groupBy('branch.name');
 
+        // --- 3. PROCESAMIENTO DE DATOS Y CÁLCULO DE INCIDENCIAS ---
         return $employees->map(function ($branchEmployees) use ($period, $dateRange) {
             return $branchEmployees->map(function ($employee) use ($period, $dateRange) {
-                // Aquí iría la lógica de cálculo de días a pagar y resumen de incidencias
-                // que estaba en el controlador original...
-                // (Esta es una implementación simplificada para mantener el ejemplo claro)
-                $unpaidDays = 0; // Calcular...
-                $incidentSummary = []; // Generar...
+
+                $unpaidIncidentTypeIds = [1, 4]; // Falta Injustificada, Permiso sin goce
+                $totalDaysInPeriod = $dateRange->count();
+                $unpaidDays = 0;
+                $incidentSummary = [];
+
+                if ($period->status === 'closed') {
+                    // --- LÓGICA PARA PERIODOS CERRADOS: Leer solo de la BD ---
+                    foreach ($employee->incidents as $incident) {
+                        if (in_array($incident->incident_type_id, $unpaidIncidentTypeIds)) {
+                            $unpaidDays += Carbon::parse($incident->start_date)->diffInDays(Carbon::parse($incident->end_date)) + 1;
+                        }
+                        $incidentSummary[] = $incident->incidentType->name . ' (' . Carbon::parse($incident->start_date)->isoFormat('dddd, DD MMM') . ')';
+                    }
+                } else {
+                    // --- LÓGICA PARA PERIODOS ABIERTOS: Cálculo dinámico ---
+                    $holidaysInPeriod = $this->holidayService->getHolidaysForPeriod($employee, $dateRange);
+                    $workDaysOfWeek = $employee->schedules->flatMap->details->pluck('day_of_week')->toArray();
+
+                    foreach ($dateRange as $date) {
+                        $dateString = $date->format('Y-m-d');
+                        $incidentToday = $employee->incidents->first(fn($inc) => $date->between($inc->start_date, $inc->end_date));
+
+                        if ($incidentToday) {
+                            $incidentSummary[] = $incidentToday->incidentType->name . ' (' . $date->isoFormat('dddd, DD MMM') . ')';
+                            if (in_array($incidentToday->incident_type_id, $unpaidIncidentTypeIds)) $unpaidDays++;
+                            continue;
+                        }
+
+                        $isRestDay = !in_array($date->dayOfWeekIso, $workDaysOfWeek);
+                        $isHoliday = isset($holidaysInPeriod[$dateString]);
+                        $hasAttendance = $employee->attendances->contains(fn($att) => Carbon::parse($att->created_at)->isSameDay($date));
+
+                        // Una falta automática solo aplica a días pasados, no hoy ni en el futuro.
+                        $isAutoAbsence = !$isRestDay && !$isHoliday && !$hasAttendance && $date->isPast() && !$date->isToday();
+
+                        if ($isAutoAbsence) {
+                            $incidentSummary[] = 'Falta Injustificada (auto-detectada) (' . $date->isoFormat('dddd, DD MMM') . ')';
+                            $unpaidDays++;
+                        } elseif ($isHoliday && $hasAttendance) {
+                            $incidentSummary[] = 'Día Festivo Laborado (' . $date->isoFormat('dddd, DD MMM') . ')';
+                        } elseif ($isHoliday && !$hasAttendance) {
+                            $incidentSummary[] = 'Día Festivo (' . $date->isoFormat('dddd, DD MMM') . ')';
+                        } elseif ($isRestDay && !$hasAttendance) {
+                            $incidentSummary[] = 'Descanso (' . $date->isoFormat('dddd, DD MMM') . ')';
+                        }
+                    }
+                }
+
+                if ($employee->periodNotes->first()?->comments) {
+                    $incidentSummary[] = 'Comentarios: ' . $employee->periodNotes->first()->comments;
+                }
 
                 return [
                     'id' => $employee->id,
                     'employee_number' => $employee->employee_number,
-                    'name' => $employee->first_name . ' ' . $employee->last_name,
-                    'days_to_pay' => $dateRange->count() - $unpaidDays,
+                    'name' => $employee->full_name,
+                    'days_to_pay' => $totalDaysInPeriod - $unpaidDays,
                     'incidents' => $incidentSummary,
                 ];
             });

@@ -35,7 +35,7 @@ class BonusService
 
                 return [
                     'id' => $employee->id,
-                    'name' => $employee->first_name . ' ' . $employee->last_name,
+                    'name' => $employee->full_name,
                     'employee_number' => $employee->employee_number,
                     'punctuality_earned' => $punctualityDetail?->calculated_amount > 0,
                     'attendance_earned' => $attendanceDetail?->calculated_amount > 0,
