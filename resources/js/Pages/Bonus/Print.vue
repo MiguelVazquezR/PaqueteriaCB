@@ -1,7 +1,8 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import es from 'date-fns/locale/es';
+import Button from 'primevue/button'; // Se asume que importas Button globalmente o aquí.
 
 const props = defineProps({
     report: Object,
@@ -9,7 +10,8 @@ const props = defineProps({
 });
 
 const periodFormatted = (date) => {
-    const periodDate = new Date(date);
+    // Se añade un parseo para asegurar que la fecha sea un objeto Date válido
+    const periodDate = new Date(date); // Asumir zona horaria local
     return `Periodo: ${format(startOfMonth(periodDate), 'dd MMMM', { locale: es })} al ${format(endOfMonth(periodDate), 'dd MMMM yyyy', { locale: es })}`;
 };
 
@@ -33,15 +35,14 @@ const closeWindow = () => window.history.back();
                     <p class="text-gray-600">{{ periodFormatted(report.period) }}</p>
                 </div>
                 <div class="text-right">
-                    <!-- --- CAMBIO: --- Grupo de botones para imprimir y cerrar -->
                     <div class="flex items-center gap-2 print-hide">
-                         <Button label="Cerrar" icon="pi pi-times" class="p-button-secondary p-button-outlined" @click="closeWindow"/>
-                         <Button label="Imprimir o guardar en PDF" icon="pi pi-print" @click="printReport"/>
+                        <Button label="Cerrar" icon="pi pi-times" severity="secondary" outlined @click="closeWindow"/>
+                        <Button label="Imprimir o guardar en PDF" icon="pi pi-print" @click="printReport"/>
                     </div>
                     <div class="flex items-center justify-end gap-2 mt-2">
                         <span class="font-bold text-sm">Paquetería Casa Blanca</span>
                     </div>
-                    <p class="text-sm text-gray-500">{{ generatedAtFormatted(report.generated_at) }}</p>
+                    <p class="text-sm text-gray-500">{{ generatedAtFormatted(report.created_at) }}</p>
                 </div>
             </div>
 
@@ -53,7 +54,7 @@ const closeWindow = () => window.history.back();
                         <h2 class="text-lg font-semibold">Sucursal {{ branchName }}</h2>
                     </div>
                     <div class="overflow-x-auto">
-                         <table class="min-w-full text-sm">
+                        <table class="min-w-full text-sm">
                             <thead class="border-b">
                                 <tr>
                                     <th class="py-2 px-3 text-left font-semibold text-gray-600">N° empleado</th>
@@ -65,7 +66,6 @@ const closeWindow = () => window.history.back();
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- --- CAMBIO: --- El bucle ahora es más simple -->
                                 <tr v-for="employee in employees" :key="employee.employee_id" class="border-b">
                                     <td class="py-3 px-3">{{ employee.employee_number }}</td>
                                     <td class="py-3 px-3">{{ employee.employee_name }}</td>
@@ -100,4 +100,3 @@ const closeWindow = () => window.history.back();
     }
 }
 </style>
-
