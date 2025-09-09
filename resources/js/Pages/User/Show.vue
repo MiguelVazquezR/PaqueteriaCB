@@ -250,7 +250,7 @@ const calculateDayTotalHours = (detail) => {
                                         user.employee?.nss || '-' }}</span></div>
                             <div class="flex py-2"><span class="text-gray-500 w-[40%]">Salario base</span><span
                                     class="font-medium text-gray-700 dark:text-gray-300">${{ new
-                                        Intl.NumberFormat('es-MX').format(user.employee?.base_salary) }} mensuales</span>
+                                        Intl.NumberFormat('es-MX').format(user.employee?.base_salary) }} semanales</span>
                             </div>
                         </div>
                     </div>
