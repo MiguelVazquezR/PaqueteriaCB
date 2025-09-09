@@ -266,10 +266,10 @@ const getDayFromSchedule = (dayOfWeek) => {
                             <InputText id="nss" v-model="form.nss" class="w-full" placeholder="Agrega es NSS" />
                         </div>
                         <div>
-                            <InputLabel for="base_salary" value="Salario base mensual*" />
+                            <InputLabel for="base_salary" value="Salario semanal*" />
                             <InputNumber id="base_salary" v-model="form.base_salary" mode="currency" currency="MXN"
                                 locale="es-MX" class="w-full" :invalid="!!form.errors.base_salary"
-                                placeholder="Ej. 15,000.00" />
+                                placeholder="Ej. 3,000.00" />
                             <small v-if="form.errors.base_salary" class="text-red-500 mt-1">{{ form.errors.base_salary
                                 }}</small>
                         </div>
