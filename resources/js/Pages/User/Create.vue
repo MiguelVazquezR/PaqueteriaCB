@@ -26,18 +26,18 @@ const op = ref();
 const scheduleOp = ref();
 const fileUploadRef = ref(null);
 const imagePreview = ref(null);
+const isImageProcessing = ref(false); // ✨ NUEVO: Estado de carga para la imagen.
 const relationships = [
     'Madre/Padre', 'Hermano/Hermana', 'Esposo/Esposa', 'Tío/Tía', 'Abuelo/Abuela', 'Otro',
 ];
 
 const form = useForm({
-    // Info Personal
+    // ... (resto del formulario sin cambios)
     first_name: '',
     last_name: '',
     phone: '',
     birth_date: null,
     address: '',
-    // Info Laboral
     employee_number: '',
     hire_date: new Date(),
     branch_id: null,
@@ -50,16 +50,13 @@ const form = useForm({
     is_active: true,
     termination_date: null,
     termination_reason: '',
-    // Contacto Emergencia
     emergency_contact_name: '',
     emergency_contact_phone: '',
     emergency_contact_relationship: '',
-    // Acceso al sistema
     create_user_account: true,
     email: '',
     password: '',
     role_id: null,
-    // Imagen
     facial_image: null,
 });
 
@@ -77,43 +74,80 @@ const selectedSchedule = computed(() => {
 
 // --- Methods ---
 /**
- * ✨ CAMBIO: Se reemplaza URL.createObjectURL por FileReader.
- * Esto es mucho más robusto y funciona en entornos de producción con
- * políticas de seguridad de contenido (CSP) estrictas.
+ * ✨ SOLUCIÓN DEFINITIVA: Se procesa la imagen en el cliente.
+ * 1. Se añade un estado de carga (`isImageProcessing`).
+ * 2. La imagen se dibuja en un <canvas> para redimensionarla a un máximo de 800x800px.
+ * 3. Se genera una nueva imagen comprimida (JPEG al 80%) para la vista previa y la subida.
+ * Esto resuelve el problema de las imágenes pesadas y mejora el rendimiento.
  */
 const onFileSelect = (event) => {
     const file = event.files[0];
-    if (file) {
-        form.facial_image = file;
-        
-        // 1. Crear una instancia de FileReader.
-        const reader = new FileReader();
+    if (!file) return;
 
-        // 2. Definir qué hacer cuando el archivo se haya leído.
-        reader.onload = (e) => {
-            // El resultado es una cadena de texto en base64 (Data URL).
-            imagePreview.value = e.target.result;
+    isImageProcessing.value = true;
+    imagePreview.value = null; // Limpiar vista previa anterior
+
+    const reader = new FileReader();
+    const MAX_DIMENSION = 800; // Máximo ancho/alto para la imagen
+
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            let { width, height } = img;
+
+            // Calcular nuevas dimensiones manteniendo la proporción
+            if (width > height) {
+                if (width > MAX_DIMENSION) {
+                    height *= MAX_DIMENSION / width;
+                    width = MAX_DIMENSION;
+                }
+            } else {
+                if (height > MAX_DIMENSION) {
+                    width *= MAX_DIMENSION / height;
+                    height = MAX_DIMENSION;
+                }
+            }
+
+            // Crear canvas para redimensionar
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // 1. Obtener Data URL para la vista previa
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            imagePreview.value = dataUrl;
+
+            // 2. Convertir canvas a Blob/File para la subida
+            canvas.toBlob((blob) => {
+                const resizedFile = new File([blob], file.name, {
+                    type: 'image/jpeg',
+                    lastModified: Date.now(),
+                });
+                form.facial_image = resizedFile; // Actualizar el form con el archivo optimizado
+                isImageProcessing.value = false; // Finalizar carga
+            }, 'image/jpeg', 0.8);
         };
-        
-        // 3. Iniciar la lectura del archivo.
-        reader.readAsDataURL(file);
-    }
+        img.src = e.target.result;
+    };
+    reader.onerror = () => {
+        console.error("Error al leer el archivo.");
+        isImageProcessing.value = false;
+    };
+    reader.readAsDataURL(file);
 };
 
-/**
- * ✨ MEJORA: Se pasa el callback `clearCallback` del template al método.
- * Esto asegura que el estado interno del componente FileUpload también se limpie.
- */
+
 const clearImage = (clearCallback) => {
     form.facial_image = null;
     imagePreview.value = null;
+    isImageProcessing.value = false; // Asegurarse de quitar el loader
     
-    // Si se proporciona el callback del componente, se llama.
     if (clearCallback) {
         clearCallback();
     }
     
-    // También se puede usar la referencia como fallback.
     if (fileUploadRef.value) {
         fileUploadRef.value.clear();
     }
@@ -334,12 +368,18 @@ const getDayFromSchedule = (dayOfWeek) => {
                             asistencia</h2>
                     </div>
                     <FileUpload ref="fileUploadRef" name="facial_image" @select="onFileSelect" :showUploadButton="false"
-                        :showCancelButton="false" accept="image/*" :maxFileSize="1024000">
+                        :showCancelButton="false" accept="image/*" :maxFileSize="5000000"> <!-- Aumentamos el tamaño aceptado, ya que lo comprimiremos -->
                         <template #header="{ chooseCallback }">
-                             <Button label="Subir imagen" icon="pi pi-upload" outlined @click="chooseCallback" />
+                             <Button label="Subir imagen" icon="pi pi-upload" outlined @click="chooseCallback" :disabled="isImageProcessing" />
                         </template>
                         <template #content="{ clearCallback }">
-                            <div v-if="imagePreview"
+                             <!-- ✨ NUEVO: Estado de carga mientras se procesa la imagen -->
+                            <div v-if="isImageProcessing"
+                                class="flex flex-col items-center justify-center gap-4 p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg min-h-[260px]">
+                                <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" animationDuration=".5s" />
+                                <p class="text-gray-500 dark:text-gray-400 mt-2">Optimizando imagen...</p>
+                            </div>
+                            <div v-else-if="imagePreview"
                                 class="flex flex-col items-center justify-center gap-4 p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
                                 <img :src="imagePreview" alt="Vista previa"
                                     class="w-48 h-48 rounded-full object-cover" />
@@ -347,7 +387,7 @@ const getDayFromSchedule = (dayOfWeek) => {
                                     @click="() => clearImage(clearCallback)" />
                             </div>
                             <div v-else
-                                class="flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-center">
+                                class="flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-center min-h-[260px]">
                                 <i class="pi pi-image text-5xl text-gray-400 dark:text-gray-500"></i>
                                 <p class="text-gray-500 dark:text-gray-400">Sube o arrastra una foto clara del rostro
                                     del empleado.</p>
