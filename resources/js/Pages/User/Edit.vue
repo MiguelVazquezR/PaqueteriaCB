@@ -23,20 +23,19 @@ const items = ref([
     { label: 'Usuarios', url: route('users.index'), icon: PrimeIcons.USER },
     { label: 'Editar usuario' }
 ]);
-const op = ref(); // Referencia para el Popover
-const scheduleOp = ref(); // Ref para el popover del horario
-const imagePreview = ref(props.user.avatar_url || null); // ✨ Usa la URL del avatar si existe
+const op = ref();
+const scheduleOp = ref();
 const fileUploadRef = ref(null);
+const imagePreview = ref(props.user.avatar_url || null); // Muestra la imagen actual del usuario.
+const isImageProcessing = ref(false); // ✨ NUEVO: Estado de carga para la imagen.
 const relationships = [
     'Madre/Padre', 'Hermano/Hermana', 'Esposo/Esposa', 'Tío/Tía', 'Abuelo/Abuela', 'Otro',
 ];
 
-// Corregir el manejo de fechas que vienen como string desde el backend
 const parseDate = (dateString) => {
     return dateString ? new Date(dateString) : null;
 };
 
-// Inicializamos el formulario con los datos del usuario y su empleado
 const form = useForm({
     _method: 'PUT',
     // Info Personal
@@ -45,7 +44,6 @@ const form = useForm({
     phone: props.user.employee?.phone || '',
     birth_date: parseDate(props.user.employee?.birth_date),
     address: props.user.employee?.address || '',
-
     // Info Laboral
     employee_number: props.user.employee?.employee_number || '',
     hire_date: parseDate(props.user.employee?.hire_date),
@@ -59,17 +57,14 @@ const form = useForm({
     is_active: props.user.employee?.is_active ?? true,
     termination_date: parseDate(props.user.employee?.termination_date),
     termination_reason: props.user.employee?.termination_reason || '',
-
     // Contacto Emergencia
     emergency_contact_name: props.user.employee?.emergency_contact_name || '',
     emergency_contact_phone: props.user.employee?.emergency_contact_phone || '',
     emergency_contact_relationship: props.user.employee?.emergency_contact_relationship || '',
-
     // Acceso al sistema
     email: props.user.email,
     password: '',
     role_id: props.user.roles[0]?.id || null,
-
     // Imagen
     facial_image: null,
     delete_photo: false,
@@ -89,30 +84,72 @@ const selectedSchedule = computed(() => {
 
 // --- Methods ---
 /**
- * ✨ SOLUCIÓN: Usamos FileReader para la vista previa, igual que en Create.vue.
- * Esto asegura que funcione en producción.
+ * ✨ ACTUALIZADO: Se implementa la misma lógica de procesamiento de imagen que en Create.vue
+ * para redimensionar y comprimir imágenes pesadas antes de la subida y previsualización.
  */
 const onFileSelect = (event) => {
     const file = event.files[0];
-    if (file) {
-        form.facial_image = file;
-        form.delete_photo = false; // Si se sube una nueva, no se borra la anterior.
-        
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            imagePreview.value = e.target.result;
+    if (!file) return;
+
+    isImageProcessing.value = true;
+    imagePreview.value = null;
+    form.delete_photo = false; // Si se sube una nueva, no se borra la anterior.
+
+    const reader = new FileReader();
+    const MAX_DIMENSION = 800;
+
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            let { width, height } = img;
+
+            if (width > height) {
+                if (width > MAX_DIMENSION) {
+                    height *= MAX_DIMENSION / width;
+                    width = MAX_DIMENSION;
+                }
+            } else {
+                if (height > MAX_DIMENSION) {
+                    width *= MAX_DIMENSION / height;
+                    height = MAX_DIMENSION;
+                }
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            imagePreview.value = dataUrl;
+
+            canvas.toBlob((blob) => {
+                const resizedFile = new File([blob], file.name, {
+                    type: 'image/jpeg',
+                    lastModified: Date.now(),
+                });
+                form.facial_image = resizedFile;
+                isImageProcessing.value = false;
+            }, 'image/jpeg', 0.8);
         };
-        reader.readAsDataURL(file);
-    }
+        img.src = e.target.result;
+    };
+    reader.onerror = () => {
+        console.error("Error al leer el archivo.");
+        isImageProcessing.value = false;
+    };
+    reader.readAsDataURL(file);
 };
 
 /**
- * ✨ MEJORA: Lógica para quitar la imagen existente o la nueva.
+ * ✨ ACTUALIZADO: Lógica mejorada para quitar la imagen.
  */
 const clearImage = (clearCallback) => {
     form.facial_image = null;
     imagePreview.value = null;
-    form.delete_photo = true; // Se marca para que el backend elimine la foto guardada.
+    isImageProcessing.value = false;
+    form.delete_photo = true; // Marca la foto actual para ser eliminada en el backend.
 
     if (clearCallback) {
         clearCallback();
@@ -124,10 +161,8 @@ const clearImage = (clearCallback) => {
 
 
 const submit = () => {
-    // Usamos POST porque los navegadores no soportan subida de archivos con PUT nativamente.
-    // Inertia maneja esto automáticamente si añadimos _method: 'PUT' al formulario.
     form.post(route('users.update', props.user.id), {
-        forceFormData: true, // Asegura que se envíe como multipart/form-data
+        forceFormData: true,
     });
 };
 
@@ -327,23 +362,30 @@ const getDayFromSchedule = (dayOfWeek) => {
                             asistencia</h2>
                     </div>
                     <FileUpload ref="fileUploadRef" name="facial_image" @select="onFileSelect" :showUploadButton="false"
-                        :showCancelButton="false" accept="image/*" :maxFileSize="1024000">
+                        :showCancelButton="false" accept="image/*" :maxFileSize="5000000">
                         <template #header="{ chooseCallback }">
-                            <Button label="Subir imagen" icon="pi pi-upload" outlined @click="chooseCallback" />
+                             <Button label="Subir imagen" icon="pi pi-upload" outlined @click="chooseCallback" :disabled="isImageProcessing" />
                         </template>
                         <template #content="{ clearCallback }">
-                             <!-- ✨ El v-if ahora comprueba imagePreview en lugar de files.length -->
-                            <div v-if="imagePreview"
+                             <!-- ✨ NUEVO: Estado de carga mientras se procesa la imagen -->
+                            <div v-if="isImageProcessing"
+                                class="flex flex-col items-center justify-center gap-4 p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg min-h-[260px]">
+                                <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" animationDuration=".5s" />
+                                <p class="text-gray-500 dark:text-gray-400 mt-2">Optimizando imagen...</p>
+                            </div>
+                             <!-- Vista previa de la imagen (nueva o existente) -->
+                            <div v-else-if="imagePreview"
                                 class="flex flex-col items-center justify-center gap-4 p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
                                 <img :src="imagePreview" alt="Vista previa"
                                     class="w-48 h-48 rounded-full object-cover" />
                                 <Button label="Quitar imagen" icon="pi pi-times" severity="danger" outlined
                                     @click="() => clearImage(clearCallback)" />
                             </div>
+                            <!-- Estado inicial si no hay imagen -->
                             <div v-else
-                                class="flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-center">
+                                class="flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-center min-h-[260px]">
                                 <i class="pi pi-image text-5xl text-gray-400 dark:text-gray-500"></i>
-                                <p class="text-gray-500 dark:text-gray-400">Sube o arrastra una nueva foto para actualizar el registro.</p>
+                                <p class="text-gray-500 dark:text-gray-400">Sube o arrastra una nueva foto para actualizar.</p>
                             </div>
                         </template>
                     </FileUpload>
