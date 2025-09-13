@@ -18,7 +18,7 @@ const { menuComponentRef, menuItems, generateAndShowMenu } = useActionMenu();
 
 // --- State ---
 const home = ref({ icon: 'pi pi-home', url: route('dashboard') });
-const items = ref([{ label: 'Configuraciones' }, { label: 'Horarios del personal' }]);
+const items = ref([{ label: 'Horarios del personal' }]);
 
 // --- Menu Configuration ---
 const menuConfig = [
@@ -87,7 +87,7 @@ const toggleMenu = (event, schedule) => generateAndShowMenu(event, schedule, men
                     </DataTable>
                     <Menu ref="menuComponentRef" :model="menuItems" :popup="true" />
                 </div>
-                <Paginator v-if="schedules.total > schedules.per_page" :first="schedules.from - 1" :rows="schedules.per_page" :totalRecords="schedules.total" @page="onPage" class="p-6 border-t" />
+                <Paginator v-if="schedules && schedules.total > 0" :first="schedules.from - 1" :rows="schedules.per_page" :totalRecords="schedules.total" :rowsPerPageOptions="[10, 20, 30, 50]" @page="onPage" class="p-6 border-t" />
             </div>
         </div>
     </AppLayout>

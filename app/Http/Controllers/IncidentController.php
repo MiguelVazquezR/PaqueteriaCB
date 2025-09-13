@@ -66,7 +66,7 @@ class IncidentController extends Controller implements HasMiddleware
             'period' => $period,
             'employeesData' => $employeesData,
             'branches' => Branch::all(['id', 'name']),
-            'filters' => $request->only(['branch_id', 'search']),
+            'filters' => $request->only(['branch_id', 'search', 'days']),
             'incidentTypes' => IncidentType::all(['id', 'name']),
             'navigation' => [
                 'previous_period_id' => $previousPeriod?->id,

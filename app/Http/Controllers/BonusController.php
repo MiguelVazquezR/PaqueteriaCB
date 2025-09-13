@@ -23,7 +23,7 @@ class BonusController extends Controller implements HasMiddleware
 
     public function index()
     {
-        $reports = BonusReport::orderBy('period', 'desc')->paginate(12);
+        $reports = BonusReport::orderBy('period', 'desc')->paginate(20);
 
         return Inertia::render('Bonus/Index', [
             'periods' => BonusReportResource::collection($reports),

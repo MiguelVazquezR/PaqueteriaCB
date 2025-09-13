@@ -68,6 +68,15 @@ const onRowSelect = (event) => {
                         <template #empty><div class="text-center p-8"><p class="text-gray-500 dark:text-gray-400">No se encontraron periodos de bonos.</p></div></template>
                     </DataTable>
                 </div>
+                <!-- Hacer pruebas con elementos en la tabla -->
+                <!-- <Paginator
+                    v-if="processedPeriods && processedPeriods.total > 0"
+                    :first="processedPeriods.from - 1"
+                    :rows="processedPeriods.per_page"
+                    :totalRecords="processedPeriods.total"
+                    :rowsPerPageOptions="[10, 20, 30, 50]"
+                    @page="onPage"
+                    class="p-6 border-t border-gray-200 dark:border-gray-700" /> -->
             </div>
         </div>
     </AppLayout>
