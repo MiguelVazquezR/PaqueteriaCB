@@ -89,7 +89,8 @@ const toggleSchedulePopover = (event, branch) => {
                     </DataTable>
                     <Menu ref="menuComponentRef" :model="menuItems" :popup="true" />
                 </div>
-                <Paginator v-if="branches.total > branches.per_page" :first="branches.from - 1" :rows="branches.per_page" :totalRecords="branches.total" :rowsPerPageOptions="[10, 20, 30, 50]" @page="onPage" class="p-6 border-t border-gray-200 dark:border-gray-700" />
+                <Paginator v-if="branches.meta && branches.meta.total > 0" :first="branches.meta.from - 1"
+                    :rows="branches.meta.per_page" :totalRecords="branches.meta.total" :rowsPerPageOptions="[10, 20, 30, 50]" @page="onPage" class="p-6 border-t border-gray-200 dark:border-gray-700" />
             </div>
         </div>
     </AppLayout>

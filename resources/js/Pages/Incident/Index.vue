@@ -86,7 +86,7 @@ const onRowSelect = (event) => {
                 </div>
 
                 <Paginator
-                    v-if="periods.total > periods.per_page"
+                    v-if="periods && periods.total > 0"
                     :first="periods.from - 1"
                     :rows="periods.per_page"
                     :totalRecords="periods.total"

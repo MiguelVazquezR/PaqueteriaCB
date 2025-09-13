@@ -47,6 +47,7 @@ const toggleMenu = (event, user) => {
 </script>
 
 <template>
+
     <Head title="Usuarios" />
     <AppLayout>
         <Breadcrumb :home="home" :model="items" class="!bg-transparent" />
@@ -54,20 +55,25 @@ const toggleMenu = (event, user) => {
             <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg">
                 <div class="flex justify-end items-center p-6 pb-0">
                     <Link :href="route('users.create')" class="sm:mt-0 w-full sm:w-auto">
-                        <Button v-if="hasPermission('crear_usuarios')" label="Crear usuario" icon="pi pi-plus" class="w-full" />
+                    <Button v-if="hasPermission('crear_usuarios')" label="Crear usuario" icon="pi pi-plus"
+                        class="w-full" />
                     </Link>
                 </div>
-                <div class="flex flex-col sm:flex-row justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 text-center sm:text-left">Usuarios</h1>
+                <div
+                    class="flex flex-col sm:flex-row justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 text-center sm:text-left">Usuarios
+                    </h1>
                     <IconField>
                         <InputText v-model="search" placeholder="Buscar" class="w-full" />
                         <InputIcon class="pi pi-search" />
                     </IconField>
                 </div>
                 <div class="overflow-x-auto">
-                    <DataTable :value="users.data" @sort="onSort" :sortField="filters.sort_by || 'id'" :sortOrder="filters.sort_direction === 'asc' ? 1 : -1" removableSort>
+                    <DataTable :value="users.data" @sort="onSort" :sortField="filters.sort_by || 'id'"
+                        :sortOrder="filters.sort_direction === 'asc' ? 1 : -1" removableSort>
                         <Column field="avatar_url" header="Imagen">
-                            <template #body="slotProps"><img :src="slotProps.data.avatar_url" :alt="slotProps.data.name" class="size-12 rounded-full object-cover" /></template>
+                            <template #body="slotProps"><img :src="slotProps.data.avatar_url" :alt="slotProps.data.name"
+                                    class="size-12 rounded-full object-cover" /></template>
                         </Column>
                         <!-- AJUSTES EN LAS COLUMNAS PARA LEER LA NUEVA ESTRUCTURA ANIDADA -->
                         <Column field="employee_number" header="N° empleado" class="w-[140px]" sortable>
@@ -77,17 +83,17 @@ const toggleMenu = (event, user) => {
                         </Column>
                         <Column field="name" header="Nombre" sortable></Column>
                         <Column field="position" header="Puesto" sortable>
-                             <template #body="{ data }">
+                            <template #body="{ data }">
                                 {{ data.employee?.position ?? 'Usuario del Sistema' }}
                             </template>
                         </Column>
                         <Column field="branch" header="Sucursal" sortable>
-                             <template #body="{ data }">
+                            <template #body="{ data }">
                                 {{ data.employee?.branch?.name }}
                             </template>
                         </Column>
                         <Column field="phone" header="Teléfono">
-                             <template #body="{ data }">
+                            <template #body="{ data }">
                                 {{ data.employee?.phone }}
                             </template>
                         </Column>
@@ -95,7 +101,7 @@ const toggleMenu = (event, user) => {
                             <template #body="{ data }">
                                 <!-- Capitaliza el primer rol encontrado -->
                                 <span v-if="data.roles && data.roles.length > 0" class="capitalize">
-                                   {{ data.roles[0] }}
+                                    {{ data.roles[0] }}
                                 </span>
                             </template>
                         </Column>
@@ -103,20 +109,27 @@ const toggleMenu = (event, user) => {
                             <template #body="slotProps">
                                 <!-- Si no hay empleado, se asume que el usuario está activo -->
                                 <Tag :value="getStatusInfo(slotProps.data.employee?.is_active ?? true, userStatusMap).label"
-                                     :severity="getStatusInfo(slotProps.data.employee?.is_active ?? true, userStatusMap).severity"
-                                     class="rounded-full px-3 py-1 text-xs font-semibold" />
+                                    :severity="getStatusInfo(slotProps.data.employee?.is_active ?? true, userStatusMap).severity"
+                                    class="rounded-full px-3 py-1 text-xs font-semibold" />
                             </template>
                         </Column>
                         <Column v-if="hasPermission('editar_usuarios')" bodyStyle="text-align:center; overflow:visible">
                             <template #body="slotProps">
-                                <Button @click="toggleMenu($event, slotProps.data)" icon="pi pi-ellipsis-v" text rounded aria-haspopup="true" />
+                                <Button @click="toggleMenu($event, slotProps.data)" icon="pi pi-ellipsis-v" text rounded
+                                    aria-haspopup="true" />
                             </template>
                         </Column>
-                        <template #empty><div class="text-center p-8"><p class="text-gray-500 dark:text-gray-400">No se encontraron usuarios.</p></div></template>
+                        <template #empty>
+                            <div class="text-center p-8">
+                                <p class="text-gray-500 dark:text-gray-400">No se encontraron usuarios.</p>
+                            </div>
+                        </template>
                     </DataTable>
                     <Menu ref="menuComponentRef" :model="menuItems" :popup="true" />
                 </div>
-                <Paginator v-if="users.total > 0" :first="users.from - 1" :rows="users.per_page" :totalRecords="users.total" :rowsPerPageOptions="[10, 20, 30, 50]" @page="onPage" class="p-6 border-t border-gray-200 dark:border-gray-700" />
+                <Paginator v-if="users.meta && users.meta.total > 0" :first="users.meta.from - 1"
+                    :rows="users.meta.per_page" :totalRecords="users.meta.total" :rowsPerPageOptions="[10, 20, 30, 50]"
+                    @page="onPage" class="p-6 border-t border-gray-200 dark:border-gray-700" />
             </div>
         </div>
     </AppLayout>

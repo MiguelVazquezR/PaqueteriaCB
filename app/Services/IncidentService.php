@@ -57,26 +57,38 @@ class IncidentService
             'avatar_url' => $employee->user?->profile_photo_url,
             'branch_name' => $employee->branch->name,
             'comments' => $employee->periodNotes->first()?->comments,
-            'daily_data' => $this->getDailyDataForEmployee($employee, CarbonPeriod::create($startDate, $endDate)),
+            'daily_data' => $this->getDailyDataForEmployee(
+                $employee, 
+                CarbonPeriod::create($startDate, $endDate),
+                $request->input('days') // Se pasa el array de días seleccionados
+            ),
         ]);
     }
 
     /**
      * Calcula los datos diarios de asistencia e incidencias para un empleado en un rango de fechas.
      */
-    public function getDailyDataForEmployee(Employee $employee, CarbonPeriod $dateRange): array
+    public function getDailyDataForEmployee(Employee $employee, CarbonPeriod $dateRange, ?array $selectedDays = null): array
     {
         $employee->load(['schedules.details', 'incidents.incidentType', 'attendances']);
 
         // --- Se obtienen todos los festivos del periodo de una sola vez.
         $holidaysInPeriod = $this->holidayService->getHolidaysForPeriod($employee, $dateRange);
 
+        // Si se recibe el filtro de días, nos aseguramos que sean enteros para la comparación
+        if ($selectedDays) {
+            $selectedDays = array_map('intval', $selectedDays);
+        }
+
         $dailyData = [];
         foreach ($dateRange as $date) {
-
-
             $dayKey = $date->format('Y-m-d');
             $dayOfWeek = $date->dayOfWeekIso; // 1 (Lunes) a 7 (Domingo)
+
+            // Si hay un filtro de días y el día actual no está en la selección, lo saltamos.
+            if ($selectedDays && !in_array($dayOfWeek, $selectedDays)) {
+                continue; // Pasa al siguiente día del bucle
+            }
 
             // Determinar si es un día laboral o de descanso según el horario del empleado
             $scheduleDetail = $employee->schedules->flatMap->details->firstWhere('day_of_week', $dayOfWeek);
