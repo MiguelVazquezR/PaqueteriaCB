@@ -37,7 +37,7 @@ class UserController extends Controller implements HasMiddleware
             // 1. Carga ansiosa (Eager Loading) para obtener los datos de las relaciones.
             // Siempre obtendremos un modelo User con su relación employee (o null).
             ->with(['employee.branch', 'roles'])
-            // 2. Unimos con `employees` y `branches` para poder ordenar por sus columnas.
+            // 2. Unimos con `employees` y `branches` para poder ordenar y buscar por sus columnas.
             ->leftJoin('employees', 'users.id', '=', 'employees.user_id')
             ->leftJoin('branches', 'employees.branch_id', '=', 'branches.id')
             // 3. Seleccionamos todas las columnas de `users` para asegurar que obtenemos modelos Eloquent completos.
@@ -50,7 +50,9 @@ class UserController extends Controller implements HasMiddleware
                     ->orWhere('users.email', 'like', "%{$search}%")
                     ->orWhere('employees.employee_number', 'like', "%{$search}%")
                     // Busca por nombre completo del empleado
-                    ->orWhere(DB::raw("CONCAT(employees.first_name, ' ', employees.last_name)"), 'like', "%{$search}%");
+                    ->orWhere(DB::raw("CONCAT(employees.first_name, ' ', employees.last_name)"), 'like', "%{$search}%")
+                    // --- Se añade la búsqueda por nombre de sucursal ---
+                    ->orWhere('branches.name', 'like', "%{$search}%");
             });
         });
 
@@ -72,12 +74,12 @@ class UserController extends Controller implements HasMiddleware
             $query->orderBy('users.id', 'desc'); // Orden por defecto
         }
 
+        // Se mantiene el número de items por página enviado desde el front, con un default de 20.
         $paginator = $query->paginate($request->input('per_page', 20))->withQueryString();
 
-        // Se corrigió el return duplicado. Ahora se pasa el recurso a la vista Inertia.
         return Inertia::render('User/Index', [
             'users' => UserResource::collection($paginator),
-            'filters' => $request->only(['search', 'sort_by', 'sort_direction']),
+            'filters' => $request->only(['search', 'sort_by', 'sort_direction', 'per_page']),
         ]);
     }
 

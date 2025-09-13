@@ -87,7 +87,16 @@ const toggleMenu = (event, schedule) => generateAndShowMenu(event, schedule, men
                     </DataTable>
                     <Menu ref="menuComponentRef" :model="menuItems" :popup="true" />
                 </div>
-                <Paginator v-if="schedules && schedules.total > 0" :first="schedules.from - 1" :rows="schedules.per_page" :totalRecords="schedules.total" :rowsPerPageOptions="[10, 20, 30, 50]" @page="onPage" class="p-6 border-t" />
+                <!-- --- CORRECCIÓN: El paginador ahora lee los datos desde `schedules.meta` --- -->
+                <Paginator 
+                    v-if="schedules.meta && schedules.meta.total > 0" 
+                    :first="schedules.meta.from - 1" 
+                    :rows="schedules.meta.per_page" 
+                    :totalRecords="schedules.meta.total" 
+                    :rowsPerPageOptions="[10, 20, 30, 50]" 
+                    @page="onPage" 
+                    class="p-6 border-t" 
+                />
             </div>
         </div>
     </AppLayout>
