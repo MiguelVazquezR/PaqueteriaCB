@@ -32,6 +32,11 @@ Route::get('/storage-link', function () {
     return 'cleared.';
 });
 
+Route::get('/payroll-cycle', function () {
+    Artisan::call('payroll:cycle');
+    return 'Listo!.';
+});
+
 Route::get('/bonus-generate', function (Request $request) {
     // 1. Obtenemos el parámetro 'month' de la URL (ej: ?month=2025-09)
     $month = $request->query('month');

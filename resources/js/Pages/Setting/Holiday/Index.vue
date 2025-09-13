@@ -132,7 +132,7 @@ const handleDelete = (holiday) => {
                          <template #empty><div class="text-center p-8"><p class="text-gray-500 dark:text-gray-400">No se encontraron días festivos.</p></div></template>
                     </DataTable>
                 </div>
-                <Paginator v-if="holidays.total > holidays.per_page" :first="holidays.from - 1" :rows="holidays.per_page" :totalRecords="holidays.total" :rowsPerPageOptions="[10, 20, 30, 50]" @page="onPage" class="p-6 border-t" />
+                <Paginator v-if="holidays && holidays.total > 0" :first="holidays.from - 1" :rows="holidays.per_page" :totalRecords="holidays.total" :rowsPerPageOptions="[10, 20, 30, 50]" @page="onPage" class="p-6 border-t" />
             </div>
         </div>
     </AppLayout>

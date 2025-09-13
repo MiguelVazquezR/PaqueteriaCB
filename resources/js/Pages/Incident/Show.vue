@@ -30,6 +30,19 @@ const selectedBranch = ref(props.filters.branch_id);
 const menu = ref();
 const selectedDayMenu = ref(null);
 
+// --- NUEVO: Estado para el filtro de días de la semana ---
+const daysOfWeek = ref([
+    { name: 'Lunes', value: 1 },
+    { name: 'Martes', value: 2 },
+    { name: 'Miércoles', value: 3 },
+    { name: 'Jueves', value: 4 },
+    { name: 'Viernes', value: 5 },
+    { name: 'Sábado', value: 6 },
+    { name: 'Domingo', value: 7 },
+]);
+// Por defecto, todos seleccionados. Si el filtro ya viene de la URL, se respeta.
+const selectedDays = ref(props.filters.days || [1, 2, 3, 4, 5, 6, 7]);
+
 // State para el modal de comentarios
 const commentModalVisible = ref(false);
 const currentEmployeeForComment = ref(null);
@@ -70,11 +83,12 @@ const splitButtonItems = ref([
     }
 ]);
 
-// --- Watchers ---
-watch([search, selectedBranch], debounce(() => {
+// --- MODIFICADO: Se añade `selectedDays` al watcher para que filtre al cambiar ---
+watch([search, selectedBranch, selectedDays], debounce(() => {
     router.get(route('incidents.show', props.period.id), {
         search: search.value,
-        branch_id: selectedBranch.value
+        branch_id: selectedBranch.value,
+        days: selectedDays.value // Se envía el nuevo filtro al backend
     }, {
         preserveState: true,
         preserveScroll: true,
@@ -330,8 +344,12 @@ const confirmDeleteBreak = (breakItem) => {
                             @click="navigation.next_period_id && router.get(route('incidents.show', navigation.next_period_id))" />
                     </div>
                     <div class="lg:flex items-center gap-2 w-full md:w-auto">
+                        <MultiSelect v-model="selectedDays" :options="daysOfWeek" optionLabel="name"
+                            optionValue="value" placeholder="Filtrar por día"
+                            :maxSelectedLabels="2" class="w-full md:w-56" size="large" />
+
                         <Select v-model="selectedBranch" :options="branches" optionLabel="name" optionValue="id"
-                            placeholder="Todas las sucursales" class="w-full md:w-56" size="large" showClear />
+                            placeholder="Todas las sucursales" class="w-full md:w-56 mt-2 lg:mt-0" size="large" showClear />
                         <IconField class="w-full md:w-auto mt-2 lg:mt-0">
                             <InputText v-model="search" placeholder="Buscar empleado" class="w-full" />
                             <InputIcon class="pi pi-search" />
@@ -366,99 +384,92 @@ const confirmDeleteBreak = (breakItem) => {
 
                     <!-- Tabla de días -->
                     <div class="overflow-x-auto mt-2">
-                        <table class="w-full text-sm text-left">
-                            <thead
-                                class="bg-gray-50 dark:bg-gray-700 text-xs text-gray-700 dark:text-gray-400 uppercase">
-                                <tr>
-                                    <th class="px-2 py-1">Día</th>
-                                    <th class="px-2 py-1">Entrada</th>
-                                    <th class="px-2 py-1">Salida</th>
-                                    <th class="px-2 py-1">T. Descanso</th>
-                                    <th class="px-2 py-1">T. Extra</th>
-                                    <th class="px-2 py-1">Horas totales</th>
-                                    <th class="px-2 py-1"></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="day in employee.daily_data" :key="day.date"
-                                    class="border-b dark:border-gray-700">
-                                    <td class="px-2 py-1 font-medium">
-                                        <div class="flex items-center gap-2">
-                                            <span>{{ day.date_formatted }}</span>
-                                            <i v-if="day.holiday_name && day.entry_time"
-                                                v-tooltip.top="`Festivo laborado: ${day.holiday_name}`"
-                                                class="pi pi-star-fill text-yellow-500"></i>
-                                            <!-- --- CAMBIO: --- Se añade un ícono para el descanso laborado. -->
-                                            <i v-if="day.is_rest_day && day.entry_time"
-                                                v-tooltip.top="`Descanso laborado`"
-                                                class="pi pi-briefcase text-blue-500"></i>
-                                        </div>
-                                    </td>
+                       <table class="w-full text-sm text-left">
+                             <thead
+                                 class="bg-gray-50 dark:bg-gray-700 text-xs text-gray-700 dark:text-gray-400 uppercase">
+                                 <tr>
+                                     <th class="px-2 py-1">Día</th>
+                                     <th class="px-2 py-1">Entrada</th>
+                                     <th class="px-2 py-1">Salida</th>
+                                     <th class="px-2 py-1">T. Descanso</th>
+                                     <th class="px-2 py-1">T. Extra</th>
+                                     <th class="px-2 py-1">Horas totales</th>
+                                     <th class="px-2 py-1"></th>
+                                 </tr>
+                             </thead>
+                             <tbody>
+                                 <tr v-for="day in employee.daily_data" :key="day.date"
+                                     class="border-b dark:border-gray-700">
+                                     <td class="px-2 py-1 font-medium">
+                                         <div class="flex items-center gap-2">
+                                             <span>{{ day.date_formatted }}</span>
+                                             <i v-if="day.holiday_name && day.entry_time"
+                                                 v-tooltip.top="`Festivo laborado: ${day.holiday_name}`"
+                                                 class="pi pi-star-fill text-yellow-500"></i>
+                                             <i v-if="day.is_rest_day && day.entry_time"
+                                                 v-tooltip.top="`Descanso laborado`"
+                                                 class="pi pi-briefcase text-blue-500"></i>
+                                         </div>
+                                     </td>
 
-                                    <!-- 1. Festivo DESCANSADO -->
-                                    <template v-if="day.holiday_name && !day.entry_time">
-                                        <td colspan="5" class="px-2 py-1">
-                                            <Tag :value="day.holiday_name" severity="success"
-                                                class="w-full text-center" />
-                                        </td>
-                                    </template>
+                                     <template v-if="day.holiday_name && !day.entry_time">
+                                         <td colspan="5" class="px-2 py-1">
+                                             <Tag :value="day.holiday_name" severity="success"
+                                                 class="w-full text-center" />
+                                         </td>
+                                     </template>
 
-                                    <!-- --- CAMBIO: --- 2. Descanso programado (y no trabajado) -->
-                                    <template v-else-if="day.is_rest_day && !day.entry_time && !day.incident">
-                                        <td colspan="5" class="px-2 py-1">
-                                            <Tag value="Descanso" severity="success" class="w-full text-center" />
-                                        </td>
-                                    </template>
+                                     <template v-else-if="day.is_rest_day && !day.entry_time && !day.incident">
+                                         <td colspan="5" class="px-2 py-1">
+                                             <Tag value="Descanso" severity="success" class="w-full text-center" />
+                                         </td>
+                                     </template>
 
-                                    <!-- 3. Otra incidencia (falta, vacaciones, etc.) -->
-                                    <template v-else-if="day.incident">
-                                        <td colspan="5" class="px-2 py-1">
-                                            <Tag :value="day.incident" :severity="getIncidentSeverity(day.incident)"
-                                                class="w-full text-center" />
-                                        </td>
-                                    </template>
+                                     <template v-else-if="day.incident">
+                                         <td colspan="5" class="px-2 py-1">
+                                             <Tag :value="day.incident" :severity="getIncidentSeverity(day.incident)"
+                                                 class="w-full text-center" />
+                                         </td>
+                                     </template>
 
-                                    <!-- --- CAMBIO: --- 4. Falta Injustificada (detectada automáticamente) -->
-                                    <template v-else-if="day.is_unjustified_absence">
-                                        <td colspan="5" class="px-2 py-1">
-                                            <Tag value="Falta Injustificada" severity="danger"
-                                                class="w-full text-center" />
-                                        </td>
-                                    </template>
+                                     <template v-else-if="day.is_unjustified_absence">
+                                         <td colspan="5" class="px-2 py-1">
+                                             <Tag value="Falta Injustificada" severity="danger"
+                                                 class="w-full text-center" />
+                                         </td>
+                                     </template>
 
-                                    <!-- 5. Es un día normal O un festivo TRABAJADO -->
-                                    <template v-else>
-                                        <td class="px-2 py-1">
-                                            <span v-if="day.entry_time"
-                                                v-tooltip.top="day.late_minutes && !day.late_ignored ? `${day.late_minutes} minutos de retardo` : null"
-                                                class="flex items-center gap-2"
-                                                :class="{ 'text-orange-500 font-semibold': day.late_minutes && !day.late_ignored }">
-                                                {{ day.entry_time }}
-                                                <i v-if="day.late_minutes && !day.late_ignored"
-                                                    class="pi pi-exclamation-circle"></i>
-                                            </span>
-                                            <span v-else>-</span>
-                                        </td>
-                                        <td class="px-2 py-1">{{ day.exit_time || '-' }}</td>
-                                        <td class="px-2 py-1">
-                                            <div class="flex items-center">
-                                                <span>{{ day.break_time }}</span>
-                                                <Button v-if="day.breaks_summary && day.breaks_summary.length"
-                                                    icon="pi pi-book" text rounded size="small" class="ml-2"
-                                                    @click="toggleBreakSummary($event, day)" />
-                                            </div>
-                                        </td>
-                                        <td class="px-2 py-1">{{ day.extra_time }}</td>
-                                        <td class="px-2 py-1">{{ day.total_hours }}</td>
-                                    </template>
-                                    <!-- Columna 7: Opciones (Siempre visible) -->
-                                    <td v-if="hasPermission('gestionar_incidencias')" class="px-2 py-1 text-center">
-                                        <Button @click="toggleDayMenu($event, day, employee)" icon="pi pi-ellipsis-v"
-                                            text rounded />
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                                     <template v-else>
+                                         <td class="px-2 py-1">
+                                             <span v-if="day.entry_time"
+                                                 v-tooltip.top="day.late_minutes && !day.late_ignored ? `${day.late_minutes} minutos de retardo` : null"
+                                                 class="flex items-center gap-2"
+                                                 :class="{ 'text-orange-500 font-semibold': day.late_minutes && !day.late_ignored }">
+                                                 {{ day.entry_time }}
+                                                 <i v-if="day.late_minutes && !day.late_ignored"
+                                                     class="pi pi-exclamation-circle"></i>
+                                             </span>
+                                             <span v-else>-</span>
+                                         </td>
+                                         <td class="px-2 py-1">{{ day.exit_time || '-' }}</td>
+                                         <td class="px-2 py-1">
+                                             <div class="flex items-center">
+                                                 <span>{{ day.break_time }}</span>
+                                                 <Button v-if="day.breaks_summary && day.breaks_summary.length"
+                                                     icon="pi pi-book" text rounded size="small" class="ml-2"
+                                                     @click="toggleBreakSummary($event, day)" />
+                                             </div>
+                                         </td>
+                                         <td class="px-2 py-1">{{ day.extra_time }}</td>
+                                         <td class="px-2 py-1">{{ day.total_hours }}</td>
+                                     </template>
+                                     <td v-if="hasPermission('gestionar_incidencias')" class="px-2 py-1 text-center">
+                                         <Button @click="toggleDayMenu($event, day, employee)" icon="pi pi-ellipsis-v"
+                                             text rounded />
+                                     </td>
+                                 </tr>
+                             </tbody>
+                         </table>
                     </div>
 
                     <!-- Comentarios -->

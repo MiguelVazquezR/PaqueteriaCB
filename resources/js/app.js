@@ -25,6 +25,9 @@ createInertiaApp({
             .use(plugin)
             .use(ZiggyVue)
             .use(PrimeVue, {
+                locale: {
+                    selectionMessage: '{0} elementos seleccionados'
+                },
                 theme: {
                     preset: Noir,
                     options: {
