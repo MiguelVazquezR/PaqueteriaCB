@@ -43,7 +43,7 @@ class StoreUserRequest extends FormRequest
             'email' => ['required_if:create_user_account,true', 'nullable', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required_if:create_user_account,true', 'nullable', 'string', 'min:8'],
             'role_id' => ['required_if:create_user_account,true', 'nullable', 'exists:roles,id'],
-            'facial_image' => ['nullable', 'image', 'max:1024'], // 1MB max size
+            'facial_image' => ['nullable', 'image'], // 1MB max size
         ];
     }
 }

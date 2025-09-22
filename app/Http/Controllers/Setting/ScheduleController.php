@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Setting;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreScheduleRequest;
 use App\Http\Requests\UpdateScheduleRequest;
+use App\Http\Resources\ScheduleResource;
 use App\Models\Branch;
 use App\Models\Schedule;
 use App\Services\ScheduleService;
@@ -29,17 +30,35 @@ class ScheduleController extends Controller implements HasMiddleware
         ];
     }
 
-    public function index(Request $request)
+   public function index(Request $request)
     {
-        $schedules = Schedule::with('branches:id,name')
-            ->when($request->input('search'), fn ($q, $search) => $q->where('name', 'like', "%{$search}%"))
-            ->orderBy('id')
-            ->paginate(20)
+        $query = Schedule::query()
+            ->with('branches:id,name')
+            // Seleccionamos solo las columnas de schedules y usamos distinct para evitar duplicados
+            // si un horario pertenece a múltiples sucursales que coinciden con la búsqueda.
+            ->select('schedules.*')
+            ->distinct();
+
+        // Unimos las tablas para poder buscar por el nombre de la sucursal.
+        $query->leftJoin('branch_schedule', 'schedules.id', '=', 'branch_schedule.schedule_id')
+            ->leftJoin('branches', 'branch_schedule.branch_id', '=', 'branches.id');
+
+        // Lógica de búsqueda actualizada para incluir el nombre de la sucursal.
+        $query->when($request->input('search'), function ($q, $search) {
+            $q->where(function ($subQuery) use ($search) {
+                $subQuery->where('schedules.name', 'like', "%{$search}%")
+                    ->orWhere('branches.name', 'like', "%{$search}%");
+            });
+        });
+
+        $schedules = $query->orderBy('schedules.id')
+            ->paginate($request->input('per_page', 20))
             ->withQueryString();
 
         return Inertia::render('Setting/Schedule/Index', [
-            'schedules' => $schedules,
-            'filters' => $request->only(['search']),
+            // Se utiliza un Resource para estandarizar la estructura de datos de paginación.
+            'schedules' => ScheduleResource::collection($schedules),
+            'filters' => $request->only(['search', 'per_page']),
         ]);
     }
 

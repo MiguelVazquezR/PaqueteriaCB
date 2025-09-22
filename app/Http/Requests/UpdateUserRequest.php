@@ -54,7 +54,7 @@ class UpdateUserRequest extends FormRequest
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'password' => ['nullable', 'string', 'min:8'], // La contraseña es opcional al editar
             'role_id' => ['required', 'exists:roles,id'],
-            'facial_image' => ['nullable', 'image', 'max:1024'],
+            'facial_image' => ['nullable', 'image'],
             'delete_photo' => 'boolean',
         ];
     }
