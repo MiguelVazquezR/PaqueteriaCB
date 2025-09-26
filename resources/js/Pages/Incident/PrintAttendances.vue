@@ -30,7 +30,7 @@ const getIncidentSeverity = (incidentName) => {
     const danger = ['Falta injustificada'];
     const warning = ['Incapacidad general', 'Permiso sin goce'];
     const success = ['Día Festivo', 'Descanso'];
-    const info = ['Vacaciones', 'Permiso con goce'];
+    const info = ['Vacaciones', 'Permiso con goce', 'No laboraba en empresa aún'];
 
     if (danger.includes(incidentName)) return 'danger';
     if (warning.includes(incidentName)) return 'warning';
@@ -107,6 +107,13 @@ const print = () => {
                                             <td colspan="5" class="py-2 print:py-[3px]">
                                                 <Tag :value="day.holiday_name" severity="success"
                                                     class="w-full text-center" />
+                                            </td>
+                                        </template>
+
+                                        <!-- MMuestra la etiqueta si el empleado aún no había sido contratado -->
+                                        <template v-else-if="day.not_yet_hired">
+                                            <td colspan="5" class="py-2 print:py-[3px]">
+                                                <Tag value="No laboraba en empresa aún" severity="info" class="w-full text-center" />
                                             </td>
                                         </template>
 

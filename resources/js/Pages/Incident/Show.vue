@@ -216,11 +216,18 @@ const toggleBreakSummary = (event, day) => {
     op.value.toggle(event);
 };
 
+// MODIFICADO: Se añade la lógica para deshabilitar el menú si el empleado aún no era contratado.
 const toggleDayMenu = (event, day, employee) => {
-    let menuItems = [];
-    // const isRestedHoliday = day.holiday_name && !day.entry_time;
+    // Si el empleado aún no era contratado, no mostramos ninguna opción en el menú.
+    if (day.not_yet_hired) {
+        selectedDayMenu.value = [];
+        menu.value.toggle(event); // Aún mostramos un menú vacío para consistencia de UI.
+        return;
+    }
 
-    // Solo mostrar opciones de retardo y edición si no es un festivo descansado o una incidencia.
+    let menuItems = [];
+
+    // Solo mostrar opciones de retardo y edición si no es una incidencia.
     if (!day.incident) {
         if (day.late_minutes && !day.late_ignored) {
             menuItems.push({ label: 'Quitar retardo', icon: 'pi pi-check-circle', command: () => toggleLateStatus(day) });
@@ -246,11 +253,12 @@ const toggleDayMenu = (event, day, employee) => {
     menu.value.toggle(event);
 };
 
+// MODIFICADO: Se añade el nuevo tipo de incidencia a la categoría 'info'.
 const getIncidentSeverity = (incidentName) => {
     const danger = ['Falta injustificada'];
     const warning = ['Incapacidad general', 'Permiso sin goce'];
     const success = ['Día Festivo', 'Descanso'];
-    const info = ['Vacaciones', 'Permiso con goce'];
+    const info = ['Vacaciones', 'Permiso con goce', 'No laboraba en empresa aún'];
 
     if (danger.includes(incidentName)) return 'danger';
     if (warning.includes(incidentName)) return 'warning';
@@ -416,6 +424,13 @@ const confirmDeleteBreak = (breakItem) => {
                                          <td colspan="5" class="px-2 py-1">
                                              <Tag :value="day.holiday_name" severity="success"
                                                  class="w-full text-center" />
+                                         </td>
+                                     </template>
+
+                                     <!-- Muestra la etiqueta si el empleado aún no había sido contratado -->
+                                     <template v-else-if="day.not_yet_hired">
+                                         <td colspan="5" class="px-2 py-1">
+                                             <Tag value="No laboraba en empresa aún" severity="info" class="w-full text-center" />
                                          </td>
                                      </template>
 
