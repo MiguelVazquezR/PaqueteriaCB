@@ -80,6 +80,9 @@ class IncidentService
             $selectedDays = array_map('intval', $selectedDays);
         }
 
+         // NUEVO: Parsear la fecha de contratación una sola vez para optimizar.
+        $hireDate = Carbon::parse($employee->hire_date);
+
         $dailyData = [];
         foreach ($dateRange as $date) {
             $dayKey = $date->format('Y-m-d');
@@ -89,6 +92,9 @@ class IncidentService
             if ($selectedDays && !in_array($dayOfWeek, $selectedDays)) {
                 continue; // Pasa al siguiente día del bucle
             }
+
+             // NUEVO: Verificar si el empleado ya había sido contratado en esta fecha.
+            $notYetHired = $date->isBefore($hireDate);
 
             // Determinar si es un día laboral o de descanso según el horario del empleado
             $scheduleDetail = $employee->schedules->flatMap->details->firstWhere('day_of_week', $dayOfWeek);
@@ -103,12 +109,14 @@ class IncidentService
 
             // --- CAMBIO CLAVE: --- Lógica para detectar faltas injustificadas automáticamente.
             $isUnjustifiedAbsence = false;
+            // MODIFICADO: Se añade la condición !$notYetHired para no marcar falta si aún no era contratado.
             if (
-                !$isRestDay &&                         // 1. Era un día laboral
-                !$holidayName &&                       // 2. No era festivo
-                !$incidentToday &&                     // 3. No tiene otra incidencia registrada
-                !$entry &&                             // 4. No tiene registro de entrada
-                $date->isPast() && !$date->isToday()   // 5. El día ya pasó
+                !$isRestDay &&                      // 1. Era un día laboral
+                !$holidayName &&                    // 2. No era festivo
+                !$incidentToday &&                  // 3. No tiene otra incidencia registrada
+                !$entry &&                          // 4. No tiene registro de entrada
+                $date->isPast() && !$date->isToday() && // 5. El día ya pasó
+                !$notYetHired                       // 6. Ya había sido contratado
             ) {
                 $isUnjustifiedAbsence = true;
             }
@@ -173,6 +181,7 @@ class IncidentService
                 'total_hours' => $formatMinutes($totalWorkMinutes),
                 'incident' => $incidentToday?->incidentType->name,
                 'is_unjustified_absence' => $isUnjustifiedAbsence,
+                'not_yet_hired' => $notYetHired, // NUEVO: Se envía esta bandera al frontend.
                 'is_rest_day' => $isRestDay,
                 'holiday_name' => $holidayName,
                 'late_minutes' => $entry?->late_minutes,
@@ -358,6 +367,9 @@ class IncidentService
                     $holidaysInPeriod = $this->holidayService->getHolidaysForPeriod($employee, $dateRange);
                     $workDaysOfWeek = $employee->schedules->flatMap->details->pluck('day_of_week')->toArray();
 
+                     // NUEVO: Parsear fecha de contratación
+                    $hireDate = Carbon::parse($employee->hire_date);
+
                     foreach ($dateRange as $date) {
                         $dateString = $date->format('Y-m-d');
                         $incidentToday = $employee->incidents->first(fn($inc) => $date->between($inc->start_date, $inc->end_date));
@@ -372,8 +384,11 @@ class IncidentService
                         $isHoliday = isset($holidaysInPeriod[$dateString]);
                         $hasAttendance = $employee->attendances->contains(fn($att) => Carbon::parse($att->created_at)->isSameDay($date));
 
-                        // Una falta automática solo aplica a días pasados, no hoy ni en el futuro.
-                        $isAutoAbsence = !$isRestDay && !$isHoliday && !$hasAttendance && $date->isPast() && !$date->isToday();
+                        // NUEVO: Verificar si ya laboraba
+                        $notYetHired = $date->isBefore($hireDate);
+
+                        // MODIFICADO: Se añade !$notYetHired
+                        $isAutoAbsence = !$isRestDay && !$isHoliday && !$hasAttendance && $date->isPast() && !$date->isToday() && !$notYetHired;
 
                         if ($isAutoAbsence) {
                             $incidentSummary[] = 'Falta Injustificada (auto-detectada) (' . $date->isoFormat('dddd, DD MMM') . ')';
