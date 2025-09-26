@@ -2,13 +2,11 @@
 
 namespace App\Console\Commands;
 
-// --- CAMBIO: --- Se añaden los modelos y servicios necesarios.
 use App\Models\Employee;
 use App\Models\Incident;
 use App\Models\IncidentType;
 use App\Services\HolidayService;
 use Carbon\CarbonPeriod;
-// Clases existentes
 use App\Models\PayrollPeriod;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -147,7 +145,7 @@ class Cycle extends Command
         $this->info("\nHoliday incident consolidation complete.");
     }
 
-     /**
+    /**
      * Consolida los días de descanso programados como incidencias para los empleados que no trabajaron.
      */
     protected function consolidateRestDaysAsIncidents(PayrollPeriod $period): void
@@ -210,9 +208,16 @@ class Cycle extends Command
         $endDate = Carbon::parse($period->end_date);
         $dateRange = CarbonPeriod::create($startDate, $endDate);
 
+        // Se buscan los dos tipos de incidencia que se van a registrar.
         $absenceIncidentType = IncidentType::where('code', 'F_INJUST')->first();
+        $notHiredIncidentType = IncidentType::where('code', 'NO_EMPLEADO')->first();
+
         if (!$absenceIncidentType) {
             $this->error('"Falta Injustificada" (F_INJUST) incident type not found.');
+            return;
+        }
+        if (!$notHiredIncidentType) {
+            $this->error('"No laboraba en empresa aún" (NO_EMPLEADO) incident type not found.');
             return;
         }
 
@@ -220,12 +225,13 @@ class Cycle extends Command
             ->where('hire_date', '<=', $endDate)
             ->with(['schedules.details'])
             ->get();
-            
+
         $this->info("Checking for auto-detected absences for {$employees->count()} employees...");
 
         foreach ($employees as $employee) {
             $workDaysOfWeek = $employee->schedules->flatMap->details->pluck('day_of_week')->toArray();
             $holidaysInPeriod = (new HolidayService())->getHolidaysForPeriod($employee, $dateRange);
+            $hireDate = Carbon::parse($employee->hire_date);
 
             foreach ($dateRange as $date) {
                 if ($date->isFuture()) continue; // No revisar el futuro
@@ -239,15 +245,32 @@ class Cycle extends Command
                     $hasIncident = $employee->incidents()->whereDate('start_date', '<=', $dateString)->whereDate('end_date', '>=', $dateString)->exists();
 
                     if (!$hasAttendance && !$hasIncident) {
-                        Incident::firstOrCreate([
-                            'employee_id' => $employee->id,
-                            'start_date' => $dateString,
-                        ], [
-                            'incident_type_id' => $absenceIncidentType->id,
-                            'end_date' => $dateString,
-                            'status' => 'approved',
-                            'notes' => 'Falta injustificada detectada automáticamente al cierre de nómina.',
-                        ]);
+                        // --- MODIFICADO: --- Se decide qué tipo de incidencia registrar.
+                        $notYetHired = $date->isBefore($hireDate);
+
+                        if ($notYetHired) {
+                            // Si la fecha es ANTERIOR a su contratación, es "No laboraba".
+                            Incident::firstOrCreate([
+                                'employee_id' => $employee->id,
+                                'start_date' => $dateString,
+                            ], [
+                                'incident_type_id' => $notHiredIncidentType->id,
+                                'end_date' => $dateString,
+                                'status' => 'approved',
+                                'notes' => 'Día no laborado; previo a fecha de contratación.',
+                            ]);
+                        } else {
+                            // Si la fecha es POSTERIOR o igual a su contratación, es una falta.
+                            Incident::firstOrCreate([
+                                'employee_id' => $employee->id,
+                                'start_date' => $dateString,
+                            ], [
+                                'incident_type_id' => $absenceIncidentType->id,
+                                'end_date' => $dateString,
+                                'status' => 'approved',
+                                'notes' => 'Falta injustificada detectada automáticamente al cierre de nómina.',
+                            ]);
+                        }
                     }
                 }
             }
