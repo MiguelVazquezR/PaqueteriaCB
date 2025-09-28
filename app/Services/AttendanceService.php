@@ -5,11 +5,12 @@ namespace App\Services;
 use App\Models\Attendance;
 use App\Models\Employee;
 use Illuminate\Support\Facades\Log;
+use App\Services\IncidentService;
 use Throwable;
 
 class AttendanceService
 {
-    public function __construct(protected RekognitionService $rekognitionService)
+    public function __construct(protected RekognitionService $rekognitionService, private IncidentService $incidentService)
     {
     }
 
@@ -45,9 +46,6 @@ class AttendanceService
         }
     }
 
-    /**
-     * Determines the correct attendance type and creates the record.
-     */
     private function processAttendanceForEmployee(Employee $employee, string $mode): array
     {
         $lastAttendance = $employee->attendances()->whereDate('created_at', today())->latest()->first();
@@ -69,7 +67,27 @@ class AttendanceService
             $type = ($lastAttendance->type === 'break_start') ? 'break_end' : 'break_start';
         }
 
-        Attendance::create(['employee_id' => $employee->id, 'type' => $type]);
+        // CAMBIO: Preparamos los datos de la asistencia en un array.
+        $attendanceData = [
+            'employee_id' => $employee->id,
+            'type' => $type,
+        ];
+        
+        // CAMBIO CLAVE: Si el tipo es 'entry', calculamos los minutos de retardo.
+        if ($type === 'entry') {
+            // Usamos el método público del servicio que inyectamos.
+            // La hora de entrada es la hora actual.
+            $lateMinutes = $this->incidentService->calculateLateMinutes($employee, now());
+            
+            // Si el resultado no es nulo y es mayor que 0, lo añadimos a los datos.
+            if ($lateMinutes > 0) {
+                $attendanceData['late_minutes'] = $lateMinutes;
+                $attendanceData['late_ignored'] = false; // Por defecto, un nuevo retardo no está ignorado.
+            }
+        }
+        
+        // Creamos el registro de asistencia con todos los datos preparados.
+        Attendance::create($attendanceData);
 
         $translatedType = self::translateAttendanceType($type);
         return [
