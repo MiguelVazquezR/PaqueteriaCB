@@ -58,7 +58,7 @@ class IncidentService
             'branch_name' => $employee->branch->name,
             'comments' => $employee->periodNotes->first()?->comments,
             'daily_data' => $this->getDailyDataForEmployee(
-                $employee, 
+                $employee,
                 CarbonPeriod::create($startDate, $endDate),
                 $request->input('days') // Se pasa el array de días seleccionados
             ),
@@ -80,7 +80,6 @@ class IncidentService
             $selectedDays = array_map('intval', $selectedDays);
         }
 
-         // NUEVO: Parsear la fecha de contratación una sola vez para optimizar.
         $hireDate = Carbon::parse($employee->hire_date);
 
         $dailyData = [];
@@ -88,85 +87,90 @@ class IncidentService
             $dayKey = $date->format('Y-m-d');
             $dayOfWeek = $date->dayOfWeekIso; // 1 (Lunes) a 7 (Domingo)
 
-            // Si hay un filtro de días y el día actual no está en la selección, lo saltamos.
             if ($selectedDays && !in_array($dayOfWeek, $selectedDays)) {
-                continue; // Pasa al siguiente día del bucle
+                continue;
             }
 
-             // NUEVO: Verificar si el empleado ya había sido contratado en esta fecha.
             $notYetHired = $date->isBefore($hireDate);
-
-            // Determinar si es un día laboral o de descanso según el horario del empleado
             $scheduleDetail = $employee->schedules->flatMap->details->firstWhere('day_of_week', $dayOfWeek);
             $isRestDay = is_null($scheduleDetail);
 
-            // Verificar si hay datos para este día
             $holidayName = $holidaysInPeriod[$dayKey] ?? null;
             $attendancesToday = $employee->attendances->filter(fn($att) => Carbon::parse($att->created_at)->isSameDay($date));
             $incidentToday = $employee->incidents->first(fn($inc) => $date->between($inc->start_date, $inc->end_date));
             $entry = $attendancesToday->where('type', 'entry')->first();
             $exit = $attendancesToday->where('type', 'exit')->last();
 
-            // --- CAMBIO CLAVE: --- Lógica para detectar faltas injustificadas automáticamente.
             $isUnjustifiedAbsence = false;
-            // MODIFICADO: Se añade la condición !$notYetHired para no marcar falta si aún no era contratado.
             if (
-                !$isRestDay &&                      // 1. Era un día laboral
-                !$holidayName &&                    // 2. No era festivo
-                !$incidentToday &&                  // 3. No tiene otra incidencia registrada
-                !$entry &&                          // 4. No tiene registro de entrada
-                $date->isPast() && !$date->isToday() && // 5. El día ya pasó
-                !$notYetHired                       // 6. Ya había sido contratado
+                !$isRestDay &&
+                !$holidayName &&
+                !$incidentToday &&
+                !$entry &&
+                $date->isPast() && !$date->isToday() &&
+                !$notYetHired
             ) {
                 $isUnjustifiedAbsence = true;
             }
 
             // --- LÓGICA DE CÁLCULO DE TIEMPOS ---
+            // Se inicializan las variables fuera del if para asegurar que siempre existan.
             $totalWorkMinutes = 0;
             $totalBreakMinutes = 0;
             $extraMinutes = 0;
             $breaksSummary = [];
 
-            if ($entry && $exit) {
+            // CAMBIO CLAVE 1: La lógica ahora se ejecuta si hay una entrada, sin necesidad de esperar la salida.
+            if ($entry) {
                 $breakStarts = $attendancesToday->where('type', 'break_start')->values();
                 $breakEnds = $attendancesToday->where('type', 'break_end')->values();
 
-                // 1. Calcular tiempo total de descanso y preparar resumen
+                // 1. Calcular tiempo total de descanso y preparar resumen.
                 for ($i = 0; $i < $breakStarts->count(); $i++) {
+                    $start = Carbon::parse($breakStarts[$i]->created_at);
+                    $isOngoing = false; // Bandera para saber si el descanso está activo.
+
+                    // CAMBIO CLAVE 2: Si existe un 'break_end' correspondiente, úsalo. Si no, usa la hora actual.
                     if (isset($breakEnds[$i])) {
-                        $start = Carbon::parse($breakStarts[$i]->created_at);
                         $end = Carbon::parse($breakEnds[$i]->created_at);
-                        // Usamos abs() para asegurar que la duración siempre sea positiva.
-                        $duration = abs($end->diffInMinutes($start));
-                        $totalBreakMinutes += $duration;
-                        $breaksSummary[] = [
-                            'start' => $start->format('h:i a'),
-                            'end' => $end->format('h:i a'),
-                            'duration' => $duration,
-                            'start_id' => $breakStarts[$i]->id,
-                            'end_id' => $breakEnds[$i]->id,
-                        ];
+                    } else {
+                        $end = now(); // El descanso está en curso, calculamos hasta este momento.
+                        $isOngoing = true;
                     }
+
+                    $duration = abs($end->diffInMinutes($start));
+                    $totalBreakMinutes += $duration;
+
+                    $breaksSummary[] = [
+                        'start' => $start->format('h:i a'),
+                        // NUEVO: Muestra "En curso" si el descanso no ha terminado.
+                        'end' => $isOngoing ? 'En curso' : $end->format('h:i a'),
+                        'duration' => $duration,
+                        'is_ongoing' => $isOngoing, // Enviamos la bandera al frontend.
+                        'start_id' => $breakStarts[$i]->id,
+                        'end_id' => $isOngoing ? null : $breakEnds[$i]->id,
+                    ];
                 }
 
-                // 2. Calcular horas trabajadas netas
-                $grossWorkMinutes = abs(Carbon::parse($exit->created_at)->diffInMinutes(Carbon::parse($entry->created_at)));
+                // CAMBIO CLAVE 3: Determinar la "hora efectiva de salida" para el cálculo.
+                // Si el empleado ya salió, se usa su hora de salida. Si no, se usa la hora actual.
+                $effectiveExitTime = $exit ? Carbon::parse($exit->created_at) : now();
+
+                // 2. Calcular horas trabajadas netas (hasta ahora o hasta la salida).
+                $grossWorkMinutes = abs($effectiveExitTime->diffInMinutes(Carbon::parse($entry->created_at)));
                 $totalWorkMinutes = $grossWorkMinutes - $totalBreakMinutes;
 
-                // 3. Calcular horas extra comparando con el horario
-                $dayOfWeek = $date->dayOfWeekIso;
-                $scheduleDetail = $employee->schedules->flatMap->details->firstWhere('day_of_week', $dayOfWeek);
-                if ($scheduleDetail) {
+                // 3. Calcular horas extra (solo si la jornada ya terminó).
+                if ($exit && $scheduleDetail) {
                     $scheduledStart = Carbon::parse($scheduleDetail->start_time);
                     $scheduledEnd = Carbon::parse($scheduleDetail->end_time);
                     $scheduledWorkMinutes = abs($scheduledEnd->diffInMinutes($scheduledStart)) - ($scheduleDetail->meal_minutes ?? 0);
 
                     $difference = $totalWorkMinutes - $scheduledWorkMinutes;
-                    $extraMinutes = max(0, $difference); // El tiempo extra no puede ser negativo
+                    $extraMinutes = max(0, $difference);
                 }
             }
 
-            // Función para formatear minutos a "X h Y min"
             $formatMinutes = fn($mins) => floor($mins / 60) . ' h ' . ($mins % 60) . ' min';
 
             $dailyData[] = [
@@ -181,7 +185,7 @@ class IncidentService
                 'total_hours' => $formatMinutes($totalWorkMinutes),
                 'incident' => $incidentToday?->incidentType->name,
                 'is_unjustified_absence' => $isUnjustifiedAbsence,
-                'not_yet_hired' => $notYetHired, // NUEVO: Se envía esta bandera al frontend.
+                'not_yet_hired' => $notYetHired,
                 'is_rest_day' => $isRestDay,
                 'holiday_name' => $holidayName,
                 'late_minutes' => $entry?->late_minutes,
@@ -288,9 +292,11 @@ class IncidentService
         }
     }
 
-    private function calculateLateMinutes(Employee $employee, Carbon $entryTime): ?int
+    public function calculateLateMinutes(Employee $employee, Carbon $entryTime): ?int
     {
         $dayOfWeek = $entryTime->dayOfWeekIso;
+        // Se necesita cargar la relación si no viene precargada
+        $employee->loadMissing('schedules.details');
         $scheduleDetail = $employee->schedules->flatMap->details->firstWhere('day_of_week', $dayOfWeek);
 
         if (!$scheduleDetail) return null;
@@ -367,7 +373,7 @@ class IncidentService
                     $holidaysInPeriod = $this->holidayService->getHolidaysForPeriod($employee, $dateRange);
                     $workDaysOfWeek = $employee->schedules->flatMap->details->pluck('day_of_week')->toArray();
 
-                     // NUEVO: Parsear fecha de contratación
+                    // NUEVO: Parsear fecha de contratación
                     $hireDate = Carbon::parse($employee->hire_date);
 
                     foreach ($dateRange as $date) {

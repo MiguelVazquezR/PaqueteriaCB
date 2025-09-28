@@ -552,7 +552,7 @@ const confirmDeleteBreak = (breakItem) => {
                             <span><b>Descanso {{ index + 1 }}:</b> {{ breakItem.start }} - {{ breakItem.end }}</span>
                             <div class="flex items-center w-1/3">
                                 <i class="pi pi-arrow-right !text-xs mx-2"></i>
-                                <span class="font-medium text-[#3f3f3f] flex-shrink-0">{{ breakItem.duration }}
+                                <span class="font-medium text-[#3f3f3f] flex-shrink-0">{{ breakItem.duration.toFixed(0) }}
                                     min</span>
                                 <div class="opacity-0 group-hover:opacity-100 transition-opacity">
                                     <Button icon="pi pi-pencil" text rounded size="small"
@@ -564,7 +564,7 @@ const confirmDeleteBreak = (breakItem) => {
                         </div>
                         <Divider layout="horizontal" />
                         <div class="flex justify-end font-bold text-[#3f3f3f]">
-                            <span>Total: {{ totalSelectedBreakTime }} min</span>
+                            <span>Total: {{ totalSelectedBreakTime.toFixed(0) }} min</span>
                         </div>
                     </div>
                     <div v-else>
