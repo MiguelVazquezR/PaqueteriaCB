@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreVacationTransactionRequest; // Asumiendo que creas este FormRequest
+use App\Http\Requests\StoreVacationTransactionRequest;
 use App\Models\Employee;
+use App\Models\VacationLedger; // Importar el modelo
 use App\Services\VacationService;
 use Illuminate\Http\Request;
 
@@ -27,5 +28,20 @@ class VacationController extends Controller
         $this->vacationService->createTransaction($employee, $request->validated());
 
         return back()->with('success', 'Movimiento de vacaciones registrado.');
+    }
+
+    /**
+     * Elimina un registro del historial de vacaciones y recalcula el saldo.
+     *
+     * @param VacationLedger $vacationLedger
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function destroyTransaction(VacationLedger $vacationLedger)
+    {
+        // Se utiliza la autorización directamente en el controlador.
+        // El middleware 'can:vacaciones_usuarios' ya protege la ruta.
+        $this->vacationService->deleteTransaction($vacationLedger);
+
+        return back()->with('success', 'Registro de vacaciones eliminado correctamente.');
     }
 }

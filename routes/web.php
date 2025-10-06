@@ -43,6 +43,11 @@ Route::get('/payroll-cycle', function () {
     return 'Listo!.';
 });
 
+Route::get('/set-initial-balance', function () {
+    Artisan::call('vacations:set-initial-balance');
+    return 'Listo!.';
+});
+
 Route::get('/bonus-generate', function (Request $request) {
     // 1. Obtenemos el parámetro 'month' de la URL (ej: ?month=2025-09)
     $month = $request->query('month');
