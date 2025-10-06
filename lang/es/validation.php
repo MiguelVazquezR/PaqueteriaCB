@@ -211,5 +211,7 @@ return [
         'branch_id' => 'sucursal',
         'base_salary' => 'salario base',
         'position' => 'puesto',
+        'start_date' => 'fecha de inicio',
+        'end_date' => 'fecha de finalización',
     ],
 ];
