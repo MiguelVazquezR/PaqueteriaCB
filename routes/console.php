@@ -17,3 +17,7 @@ Schedule::call(function () {
         '--month' => $currentMonth
     ]);
 })->lastDayOfMonth('23:00');
+
+// Devengar días de vacaciones proporcionales para empleados activos.
+// Se ejecutará cada sábado a la 1:00 AM.
+Schedule::command('vacations:accrue')->weeklyOn(6, '1:00');

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage, router } from '@inertiajs/vue3';
+import { useConfirmDelete } from '@/Composables/useConfirmDelete'; // <-- 1. IMPORTAR COMPOSABLE
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { PrimeIcons } from '@primevue/core/api';
 import { format } from 'date-fns';
@@ -15,6 +16,7 @@ const props = defineProps({
 });
 
 // --- Refs and State ---
+const { confirmDelete } = useConfirmDelete(); // <-- 2. INSTANCIAR COMPOSABLE
 const home = ref({ icon: 'pi pi-home', url: route('dashboard') });
 const items = ref([
     { label: 'Usuarios', url: route('users.index'), icon: PrimeIcons.USER },
@@ -38,11 +40,10 @@ const transactionForm = useForm({
 
 // --- Computed Properties ---
 const availableVacationDays = computed(() => {
-    return props.user.employee?.vacation_balance || 0;
+    return parseFloat(props.user.employee?.vacation_balance) || 0;
 });
 
 const fullName = computed(() => {
-    // Usa el `name` del nivel raíz que ya viene formateado desde el UserResource
     return props.user.name;
 });
 
@@ -64,7 +65,6 @@ const totalWeeklyHours = computed(() => {
 const positionAndBranch = computed(() => {
     const position = props.user.employee?.position;
     const branch = props.user.employee?.branch?.name;
-    // Si no hay empleado, muestra el primer rol del usuario.
     const fallbackRole = props.user.roles && props.user.roles.length > 0
         ? props.user.roles[0].charAt(0).toUpperCase() + props.user.roles[0].slice(1)
         : 'Usuario del Sistema';
@@ -82,9 +82,9 @@ const takenVacationDays = computed(() => {
 // --- Methods ---
 const translateVacationType = (type) => {
     const translations = {
-        initial: 'Iniciales',
-        earned: 'Otorgadas',
-        taken: 'Tomadas',
+        initial: 'Inicial',
+        earned: 'Ganado',
+        taken: 'Tomado',
         adjustment: 'Ajuste'
     };
     return translations[type] || type;
@@ -113,6 +113,15 @@ const saveTransaction = () => {
             transactionModalVisible.value = false;
         },
         onError: (err) => console.log(err),
+    });
+};
+
+// --- 3. REFACTORIZAR MÉTODO DE CONFIRMACIÓN ---
+const confirmDeleteTransaction = (ledgerId) => {
+    confirmDelete({
+        item: { id: ledgerId }, // El composable espera un objeto con `id`
+        routeName: 'vacations.destroyTransaction',
+        message: '¿Estás seguro de que quieres eliminar este registro? Esta acción recalculará el saldo de vacaciones del empleado.',
     });
 };
 
@@ -181,7 +190,7 @@ const calculateDayTotalHours = (detail) => {
                 <div class="bg-black dark:bg-neutral-900 h-32 md:h-48 shadow-md rounded-3xl overflow-hidden mb-8">
                     <span class="text-white text-6xl absolute bottom-4 right-7 font-bold opacity-40">CB</span>
                     <img :src="user.avatar_url" :alt="user.name"
-                         class="size-44 bg-[#D8BBFC] rounded-full object-cover absolute left-9 -bottom-7 border-8 border-[#d9d9d9] dark:border-gray-800" />
+                        class="size-44 bg-[#D8BBFC] rounded-full object-cover absolute left-9 -bottom-7 border-8 border-[#d9d9d9] dark:border-gray-800" />
                 </div>
             </div>
             <div>
@@ -189,25 +198,24 @@ const calculateDayTotalHours = (detail) => {
                     <div class="sm:ml-[200px] lg:ml-3 mt-4 sm:mt-0 text-center sm:text-left">
                         <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 m-0">{{ fullName }}</h1>
                         <p class="text-gray-600 dark:text-gray-400">{{ positionAndBranch }}</p>
-                         <Tag v-if="user.employee" :value="user.employee.is_active ? 'Activo' : 'Inactivo'"
-                             :severity="user.employee.is_active ? 'success' : 'danger'" />
-                        <!-- Si no es empleado, se considera activo como usuario del sistema -->
+                        <Tag v-if="user.employee" :value="user.employee.is_active ? 'Activo' : 'Inactivo'"
+                            :severity="user.employee.is_active ? 'success' : 'danger'" />
                         <Tag v-else value="Activo" severity="success" />
                     </div>
                     <div class="sm:ml-auto">
-                        <!-- CORREGIDO: Usar user.id del recurso raíz -->
                         <Link :href="route('users.edit', user.id)">
-                            <Button v-if="hasPermission('editar_usuarios')" label="Editar perfil" icon="pi pi-pencil" outlined />
+                        <Button v-if="hasPermission('editar_usuarios')" label="Editar perfil" icon="pi pi-pencil"
+                            outlined />
                         </Link>
                     </div>
                 </div>
             </div>
 
-            <!-- Si el usuario no es un empleado, muestra un mensaje -->
             <div v-if="!user.employee" class="text-center p-8 bg-white dark:bg-neutral-900 shadow-md rounded-lg">
                 <i class="pi pi-user text-5xl text-gray-400"></i>
                 <h2 class="mt-4 text-xl font-semibold text-gray-800 dark:text-gray-200">Usuario del Sistema</h2>
-                <p class="text-gray-500 dark:text-gray-400 mt-2">Este usuario no tiene un perfil de empleado asociado.</p>
+                <p class="text-gray-500 dark:text-gray-400 mt-2">Este usuario no tiene un perfil de empleado asociado.
+                </p>
             </div>
 
             <!-- === GRID DE INFORMACIÓN (Solo si es empleado) === -->
@@ -237,9 +245,9 @@ const calculateDayTotalHours = (detail) => {
                                     class="font-medium text-gray-700 dark:text-gray-300 flex items-center">
                                     {{ employeeSchedule?.name || 'No asignado' }}
                                     <i v-if="employeeSchedule" class="pi pi-book ml-2 cursor-pointer"
-                                       @click="toggleSchedulePopover"></i>
+                                        @click="toggleSchedulePopover"></i>
                                 </span></div>
-                             <div class="flex py-2"><span class="text-gray-500 w-[40%]">CURP</span><span
+                                <div class="flex py-2"><span class="text-gray-500 w-[40%]">CURP</span><span
                                     class="font-medium text-gray-700 dark:text-gray-300">{{ user.employee?.curp || '-'
                                     }}</span></div>
                             <div class="flex py-2"><span class="text-gray-500 w-[40%]">RFC</span><span
@@ -266,28 +274,36 @@ const calculateDayTotalHours = (detail) => {
                             </div>
                             <div class="flex gap-2 mt-4 sm:mt-0">
                                 <SplitButton v-if="hasPermission('vacaciones_usuarios')" label="Ajustar saldo inicial"
-                                     :model="transactionMenuItems" @click="isInitialBalanceModalVisible = true"
-                                     severity="secondary" size="small" outlined />
+                                    :model="transactionMenuItems" @click="isInitialBalanceModalVisible = true"
+                                    severity="secondary" size="small" outlined />
                             </div>
                         </div>
-                        <DataTable :value="user.employee?.vacation_history" scrollable scrollHeight="250px" size="small">
+                        <DataTable :value="user.employee?.vacation_history" scrollable scrollHeight="250px"
+                            size="small">
                             <Column field="date" header="Fecha">
                                 <template #body="{ data }">
                                     {{ formatDate(data.date) }}
                                 </template>
                             </Column>
-                            <Column field="type" header="Tipo de vacaciones">
+                            <Column field="type" header="Tipo de movimiento">
                                 <template #body="{ data }">
                                     <div class="flex items-center">
                                         <span>{{ translateVacationType(data.type) }}</span>
                                         <i v-if="data.description"
-                                           class="pi pi-info-circle ml-3 cursor-pointer text-gray-400"
-                                           @click="toggleDescription($event, data.description)"></i>
+                                            class="pi pi-info-circle ml-3 cursor-pointer text-gray-400"
+                                            @click="toggleDescription($event, data.description)"></i>
                                     </div>
                                 </template>
                             </Column>
                             <Column field="days" header="Días"></Column>
-                            <Column field="balance" header="Saldo disponible"></Column>
+                            <Column field="balance" header="Saldo"></Column>
+                            <Column header="Acciones" style="min-width: 5rem; text-align: center;">
+                                <template #body="{ data }">
+                                    <Button v-if="hasPermission('vacaciones_usuarios')" icon="pi pi-trash" text rounded
+                                        severity="danger" size="small" @click="confirmDeleteTransaction(data.id)"
+                                        v-tooltip.top="'Eliminar registro'" />
+                                </template>
+                            </Column>
                             <template #empty>
                                 <div class="text-center p-8">
                                     <p class="text-gray-500 dark:text-gray-400">No ha habido ningún movimiento de
@@ -295,6 +311,29 @@ const calculateDayTotalHours = (detail) => {
                                 </div>
                             </template>
                         </DataTable>
+
+                        <!-- SECCIÓN DE RESUMEN DE VACACIONES (MOVIDA AQUÍ) -->
+                        <div
+                            class="mt-6 p-4 bg-gray-50 dark:bg-neutral-800 rounded-lg flex flex-col sm:flex-row justify-around items-center gap-4 text-center">
+                            <div class="flex items-center gap-3">
+                                <AvionIcon class="size-8 text-blue-500" />
+                                <div>
+                                    <p class="text-gray-500 dark:text-gray-400 text-sm">Días disponibles</p>
+                                    <span class="font-bold text-2xl text-blue-600 dark:text-blue-400">{{
+                                        availableVacationDays.toFixed(2) }}</span>
+                                </div>
+                            </div>
+                            <div class="h-10 w-px bg-gray-200 dark:bg-neutral-700 hidden sm:block"></div>
+                            <div class="flex items-center gap-3">
+                                <i class="pi pi-calendar-minus !text-3xl text-green-500"></i>
+                                <div>
+                                    <p class="text-gray-500 dark:text-gray-400 text-sm">Días tomados (histórico)</p>
+                                    <span class="font-bold text-2xl text-green-600 dark:text-green-400">{{
+                                        takenVacationDays }}</span>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
@@ -302,7 +341,7 @@ const calculateDayTotalHours = (detail) => {
                 <div class="space-y-6">
                     <!-- Card: Información Personal -->
                     <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-2">
-                        <h2 class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-neutral-700 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
+                         <h2 class="font-semibold flex items-center space-x-3 text-base bg-[#f8f8f8] dark:bg-neutral-700 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
                             <i class="pi pi-user"></i>
                             <span>Información personal</span>
                         </h2>
@@ -339,32 +378,15 @@ const calculateDayTotalHours = (detail) => {
                                         user.employee?.emergency_contact_relationship || '-' }}</span></div>
                         </div>
                     </div>
-                    <!-- Card: Gestión de vacaciones -->
-                    <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-2">
-                        <h2 class="font-semibold flex items-center justify-between text-base bg-[#f8f8f8] dark:bg-neutral-700 rounded-[7px] text-[#3f3f3f] dark:text-gray-200 mb-2 px-2 py-px">
-                            <div class="flex items-center space-x-3">
-                                <AvionIcon class="size-4" />
-                                <span>Gestión de vacaciones</span>
-                            </div>
-                        </h2>
-                        <div class="px-4 divide-y-[1px] text-sm">
-                            <div class="flex py-2"><span class="text-gray-500 w-[40%]">Días disponibles</span><span
-                                    class="font-medium text-gray-700 dark:text-gray-300">{{ availableVacationDays
-                                    }}</span></div>
-                            <div class="flex py-2"><span class="text-gray-500 w-[40%]">Días tomados</span><span
-                                    class="font-medium text-gray-700 dark:text-gray-300">{{ takenVacationDays }}</span>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- MODALES (Solo se renderizan si hay un empleado) -->
+        <!-- MODALES -->
         <template v-if="user.employee">
             <!-- MODAL: Ajuste de saldo inicial -->
             <Dialog v-model:visible="isInitialBalanceModalVisible" modal header="Ajuste de saldo inicial"
-                    :style="{ width: '25rem' }">
+                :style="{ width: '25rem' }">
                 <span class="text-gray-500 dark:text-gray-400 block mb-4">Establece los días que el empleado tenía
                     acumulados antes
                     de usar el sistema.</span>
@@ -374,26 +396,25 @@ const calculateDayTotalHours = (detail) => {
                 </div>
                 <div class="flex justify-end gap-2 mt-6">
                     <Button type="button" label="Cancelar" severity="secondary"
-                            @click="isInitialBalanceModalVisible = false"></Button>
+                        @click="isInitialBalanceModalVisible = false"></Button>
                     <Button type="button" label="Establecer" @click="saveInitialBalance"
-                            :loading="initialBalanceForm.processing"></Button>
+                        :loading="initialBalanceForm.processing"></Button>
                 </div>
             </Dialog>
 
             <!-- MODAL: Transacción de Vacaciones -->
             <Dialog v-model:visible="transactionModalVisible" modal header="Registrar movimiento de vacaciones"
-                    :style="{ width: '30rem' }">
+                :style="{ width: '30rem' }">
                 <form @submit.prevent="saveTransaction">
                     <div class="flex flex-col gap-4">
-                        <!-- Campos para Vacaciones Tomadas -->
                         <template v-if="transactionType === 'taken'">
                             <div class="flex flex-col gap-2">
                                 <label>Rango de fechas</label>
                                 <div class="flex gap-2">
-                                    <DatePicker v-model="transactionForm.start_date" placeholder="Inicio" class="w-full"
-                                                :invalid="!!transactionForm.errors.start_date" />
+                                    <DatePicker v-model="transactionForm.start_date" placeholder="Inicio"
+                                        class="w-full" :invalid="!!transactionForm.errors.start_date" />
                                     <DatePicker v-model="transactionForm.end_date" placeholder="Fin" class="w-full"
-                                                :invalid="!!transactionForm.errors.end_date" />
+                                        :invalid="!!transactionForm.errors.end_date" />
                                 </div>
                                 <small v-if="transactionForm.errors.start_date" class="text-red-500">{{
                                     transactionForm.errors.start_date }}</small>
@@ -401,12 +422,11 @@ const calculateDayTotalHours = (detail) => {
                                     transactionForm.errors.end_date }}</small>
                             </div>
                         </template>
-                        <!-- Campos para Días Ganados o Ajustes -->
                         <template v-else>
                             <div class="flex flex-col gap-2">
                                 <label>Días a {{ transactionType === 'earned' ? 'otorgar' : 'ajustar' }}</label>
                                 <InputNumber v-model="transactionForm.days"
-                                             :placeholder="transactionType === 'adjustment' ? 'Puede ser negativo' : ''" />
+                                    :placeholder="transactionType === 'adjustment' ? 'Puede ser negativo' : ''" />
                             </div>
                         </template>
                         <div class="flex flex-col gap-2">
@@ -416,18 +436,16 @@ const calculateDayTotalHours = (detail) => {
                     </div>
                     <div class="flex justify-end gap-2 mt-6">
                         <Button type="button" label="Cancelar" severity="secondary"
-                                @click="transactionModalVisible = false" outlined />
+                            @click="transactionModalVisible = false" outlined />
                         <Button type="submit" label="Guardar" :loading="transactionForm.processing" />
                     </div>
                 </form>
             </Dialog>
 
-             <!-- Popover para mostrar la descripción -->
             <Popover ref="descriptionOp">
                 <p class="p-2 text-sm max-w-xs">{{ selectedDescription }}</p>
             </Popover>
-
-            <!-- POPOVER PARA DETALLES DEL HORARIO -->
+             <!-- POPOVER PARA DETALLES DEL HORARIO -->
             <Popover ref="scheduleOp">
                 <div class="p-4 w-[400px]">
                     <h3 class="font-bold text-lg mb-2">Detalles del horario</h3>
