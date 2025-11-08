@@ -77,7 +77,7 @@ class RekognitionService
         try {
             $result = $this->client->searchFacesByImage([
                 'CollectionId'       => $this->collectionId,
-                'FaceMatchThreshold' => 85, // Umbral de similitud (ajusta según necesites).
+                'FaceMatchThreshold' => 80, // Umbral de similitud (ajusta según necesites).
                 'Image'              => ['Bytes' => $imageBytes],
                 'MaxFaces'           => 1,
             ]);
