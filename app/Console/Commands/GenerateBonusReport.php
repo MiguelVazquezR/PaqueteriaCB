@@ -89,6 +89,7 @@ class GenerateBonusReport extends Command
         $totalLateMinutes = $employee->attendances()
             ->whereBetween('created_at', [$start, $end])
             ->where('late_ignored', false)
+            ->where('type', 'entry')
             ->sum('late_minutes');
 
         return [

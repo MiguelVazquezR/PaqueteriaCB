@@ -79,7 +79,7 @@ const capture = async () => {
     canvas.value.height = video.value.videoHeight;
     context.drawImage(video.value, 0, 0, canvas.value.width, canvas.value.height);
 
-    const imageData = canvas.value.toDataURL('image/jpeg');
+    const imageData = canvas.value.toDataURL('image/jpeg', 0.8);
     const routeName = currentAction.value === 'clock'
         ? route('attendances.kiosk.store')
         : route('attendances.kiosk.storeBreak');

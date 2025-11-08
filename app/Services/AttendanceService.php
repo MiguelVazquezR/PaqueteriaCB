@@ -56,7 +56,7 @@ class AttendanceService
                 if ($lastAttendance->type === 'exit') {
                     return ['success' => false, 'message' => "{$employee->first_name}, tu jornada ya ha finalizado por hoy.", 'status' => 400];
                 }
-                if (in_array($lastAttendance->type, ['entry', 'break_end'])) {
+                if (in_array($lastAttendance->type, ['entry', 'break_start', 'break_end'])) {
                     $type = 'exit';
                 }
             }
