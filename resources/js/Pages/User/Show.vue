@@ -392,7 +392,7 @@ const calculateDayTotalHours = (detail) => {
                     de usar el sistema.</span>
                 <div class="flex flex-col gap-2">
                     <label for="initial_balance" class="font-semibold">Saldo inicial (migración)</label>
-                    <InputNumber v-model="initialBalanceForm.initial_balance" inputId="initial_balance" />
+                    <InputNumber v-model="initialBalanceForm.initial_balance" inputId="initial_balance" :maxFractionDigits="2" />
                 </div>
                 <div class="flex justify-end gap-2 mt-6">
                     <Button type="button" label="Cancelar" severity="secondary"
@@ -426,7 +426,7 @@ const calculateDayTotalHours = (detail) => {
                             <div class="flex flex-col gap-2">
                                 <label>Días a {{ transactionType === 'earned' ? 'otorgar' : 'ajustar' }}</label>
                                 <InputNumber v-model="transactionForm.days"
-                                    :placeholder="transactionType === 'adjustment' ? 'Puede ser negativo' : ''" />
+                                    :placeholder="transactionType === 'adjustment' ? 'Puede ser negativo' : ''" :maxFractionDigits="2" />
                             </div>
                         </template>
                         <div class="flex flex-col gap-2">
