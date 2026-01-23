@@ -29,6 +29,11 @@ const descriptionOp = ref(); // Ref para el popover de descripción
 const scheduleOp = ref();
 const selectedDescription = ref(''); // Ref para guardar la descripción seleccionada
 
+// --- NUEVOS REFS PARA PERIODOS ---
+const periodModalVisible = ref(false);
+const isEditingPeriod = ref(false);
+const editingPeriodId = ref(null);
+
 const initialBalanceForm = useForm({ initial_balance: props.user.employee?.vacation_balance || 0 });
 const transactionForm = useForm({
     type: '',
@@ -36,6 +41,17 @@ const transactionForm = useForm({
     start_date: null,
     end_date: null,
     description: '',
+});
+
+// Formulario para crear/editar periodos
+const periodForm = useForm({
+    year_number: 1,
+    period_start: null,
+    period_end: null,
+    days_entitled: 0,
+    days_accrued: 0,
+    days_taken: 0,
+    is_premium_paid: false,
 });
 
 // --- Computed Properties ---
@@ -124,17 +140,67 @@ const confirmDeleteTransaction = (ledgerId) => {
     });
 };
 
-// --- MÉTODO PARA PAGAR PRIMA VACACIONAL ---
 const markPremiumAsPaid = (periodId, yearNumber) => {
-    // Usamos el composable de confirmación o un confirm nativo simple si prefieres
-    // Aquí usaremos confirmDelete adaptado o uno simple ya que no es "Delete"
     if(!confirm(`¿Confirmas que se ha pagado la prima vacacional correspondiente al Año ${yearNumber}?`)) return;
 
     router.post(route('vacations.markPremiumAsPaid', periodId), {}, {
         preserveScroll: true,
-        onSuccess: () => {
-            // Notificación de éxito manejada por flash messages globales
-        }
+        onSuccess: () => { }
+    });
+};
+
+// --- MÉTODOS PARA GESTIÓN DE PERIODOS ---
+
+const openCreatePeriodModal = () => {
+    isEditingPeriod.value = false;
+    editingPeriodId.value = null;
+    periodForm.reset();
+    
+    // Valores por defecto inteligentes (opcional)
+    const lastPeriod = props.user.employee?.vacation_periods?.slice(-1)[0];
+    if (lastPeriod) {
+        periodForm.year_number = lastPeriod.year_number + 1;
+        // Fechas sugeridas no se implementan aquí por simplicidad, pero podrían calcularse
+    } else {
+        periodForm.year_number = 1;
+    }
+    
+    periodModalVisible.value = true;
+};
+
+const openEditPeriodModal = (period) => {
+    isEditingPeriod.value = true;
+    editingPeriodId.value = period.id;
+    
+    // Cargar datos en el form
+    periodForm.year_number = period.year_number;
+    periodForm.period_start = new Date(period.period_start); // Asegurar objeto Date
+    periodForm.period_end = new Date(period.period_end);
+    periodForm.days_entitled = parseFloat(period.days_entitled);
+    periodForm.days_accrued = parseFloat(period.days_accrued);
+    periodForm.days_taken = parseFloat(period.days_taken);
+    periodForm.is_premium_paid = !!period.is_premium_paid;
+
+    periodModalVisible.value = true;
+};
+
+const savePeriod = () => {
+    if (isEditingPeriod.value) {
+        periodForm.put(route('vacations.periods.update', editingPeriodId.value), {
+            onSuccess: () => periodModalVisible.value = false,
+        });
+    } else {
+        periodForm.post(route('vacations.periods.store', props.user.employee.id), {
+            onSuccess: () => periodModalVisible.value = false,
+        });
+    }
+};
+
+const confirmDeletePeriod = (periodId) => {
+    confirmDelete({
+        item: { id: periodId },
+        routeName: 'vacations.periods.destroy',
+        message: '¿Estás seguro de eliminar este periodo vacacional? Esto podría afectar cálculos históricos.',
     });
 };
 
@@ -200,7 +266,6 @@ const calculateDayTotalHours = (detail) => {
     return diffHours - mealHours;
 };
 
-// Helper para saber si un periodo está "Completo" (días tomados >= días otorgados)
 const isPeriodExhausted = (period) => {
     return parseFloat(period.days_taken) >= (parseFloat(period.days_entitled) - 0.1);
 };
@@ -295,12 +360,13 @@ const isPeriodExhausted = (period) => {
                     <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-6">
                         <div class="flex items-center justify-between mb-4">
                             <div>
-                                <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Periodos y Primas Vacacionales</h2>
+                                <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Periodos y primas vacacionales</h2>
                                 <p class="text-sm text-gray-500">Estado de vacaciones por año de servicio.</p>
                             </div>
+                            <Button v-if="hasPermission('vacaciones_usuarios')" icon="pi pi-plus" rounded size="small" outlined @click="openCreatePeriodModal" v-tooltip.top="'Agregar periodo manualmente'" />
                         </div>
 
-                        <DataTable :value="user.employee?.vacation_periods" size="small" stripedRows tableStyle="min-width: 50rem">
+                        <DataTable :value="user.employee?.vacation_periods" size="small" stripedRows tableStyle="min-width: 45rem">
                             <Column field="year_number" header="Año">
                                 <template #body="{ data }">
                                     <span class="font-bold">Año {{ data.year_number }}</span>
@@ -315,6 +381,10 @@ const isPeriodExhausted = (period) => {
                                         <div class="flex justify-between mb-1">
                                             <span>Otorgados:</span>
                                             <span class="font-medium">{{ parseFloat(data.days_entitled) }}</span>
+                                        </div>
+                                        <div class="flex justify-between mb-1">
+                                            <span>Devengados:</span>
+                                            <span class="font-medium text-gray-500">{{ parseFloat(data.days_accrued) }}</span>
                                         </div>
                                         <div class="flex justify-between">
                                             <span>Tomados:</span>
@@ -339,7 +409,6 @@ const isPeriodExhausted = (period) => {
                                         </div>
                                     </div>
                                     <div v-else>
-                                        <!-- Si el periodo ya se agotó (se tomaron los días), sugerimos pagar -->
                                         <Button 
                                             v-if="isPeriodExhausted(data)"
                                             label="Pagar Prima" 
@@ -349,14 +418,22 @@ const isPeriodExhausted = (period) => {
                                             @click="markPremiumAsPaid(data.id, data.year_number)"
                                             v-tooltip.top="'El empleado ya tomó sus vacaciones de este año'"
                                         />
-                                        <!-- Si no se ha agotó, mostramos pendiente normal -->
-                                        <span v-else class="text-gray-400 text-sm italic">Pendiente (Aún tiene días)</span>
+                                        <span v-else class="text-gray-400 text-sm italic">Pendiente</span>
+                                    </div>
+                                </template>
+                            </Column>
+                            <!-- COLUMNA DE ACCIONES -->
+                            <Column header="Acciones" v-if="hasPermission('vacaciones_usuarios')">
+                                <template #body="{ data }">
+                                    <div class="flex gap-2">
+                                        <Button icon="pi pi-pencil" text rounded size="small" severity="secondary" @click="openEditPeriodModal(data)" />
+                                        <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="confirmDeletePeriod(data.id)" />
                                     </div>
                                 </template>
                             </Column>
                             <template #empty>
                                 <div class="text-center p-4 text-gray-500">
-                                    No hay periodos registrados. (Se generarán automáticamente al primer movimiento).
+                                    No hay periodos registrados.
                                 </div>
                             </template>
                         </DataTable>
@@ -538,6 +615,59 @@ const isPeriodExhausted = (period) => {
                     </div>
                 </form>
             </Dialog>
+
+            <!-- NUEVO MODAL: Gestión de Periodos -->
+            <Dialog v-model:visible="periodModalVisible" modal :header="isEditingPeriod ? 'Editar Periodo Vacacional' : 'Agregar Periodo Vacacional'" :style="{ width: '38rem' }">
+                <form @submit.prevent="savePeriod">
+                    <div class="flex flex-col gap-4">
+                        <div class="flex gap-2">
+                            <div class="w-1/3 flex flex-col gap-2">
+                                <label>Número de año</label>
+                                <InputNumber fluid v-model="periodForm.year_number" :useGrouping="false" :min="1" />
+                            </div>
+                            <div class="w-2/3 flex items-end pb-2">
+                                <div class="flex items-center gap-2">
+                                    <Checkbox v-model="periodForm.is_premium_paid" :binary="true" inputId="is_premium_paid" />
+                                    <label for="is_premium_paid" class="cursor-pointer">Prima Vacacional Pagada</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col gap-2">
+                            <label>Rango del Periodo (Aniversario a Aniversario)</label>
+                            <div class="flex gap-2">
+                                <DatePicker v-model="periodForm.period_start" placeholder="Inicio" class="w-full" />
+                                <DatePicker v-model="periodForm.period_end" placeholder="Fin" class="w-full" />
+                            </div>
+                            <small class="text-red-500" v-if="periodForm.errors.period_end">{{ periodForm.errors.period_end }}</small>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="flex flex-col gap-2">
+                                <label class="text-sm">Días otorgados</label>
+                                <InputNumber fluid v-model="periodForm.days_entitled" :maxFractionDigits="2" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="text-sm">Días devengados</label>
+                                <InputNumber fluid v-model="periodForm.days_accrued" :maxFractionDigits="2" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="text-sm">Días tomados</label>
+                                <InputNumber fluid v-model="periodForm.days_taken" :maxFractionDigits="2" />
+                            </div>
+                        </div>
+                        <Message severity="warn" icon="pi pi-exclamation-triangle">
+                            Modificar "Días Tomados" manualmente puede causar inconsistencias con el historial de transacciones.
+                        </Message>
+                    </div>
+
+                    <div class="flex justify-end gap-2 mt-6">
+                        <Button type="button" label="Cancelar" severity="secondary" @click="periodModalVisible = false" outlined />
+                        <Button type="submit" label="Guardar" :loading="periodForm.processing" />
+                    </div>
+                </form>
+            </Dialog>
+
 
             <Popover ref="descriptionOp">
                 <p class="p-2 text-sm max-w-xs">{{ selectedDescription }}</p>

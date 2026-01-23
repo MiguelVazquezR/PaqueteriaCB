@@ -8,6 +8,7 @@ use App\Models\VacationLedger;
 use App\Models\VacationPeriod; // Importar
 use App\Services\VacationService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class VacationController extends Controller
 {
@@ -43,10 +44,63 @@ class VacationController extends Controller
      */
     public function markPremiumAsPaid(VacationPeriod $vacationPeriod)
     {
-        // Validar autorización si es necesario (middleware ya lo hace a nivel general, pero podrías añadir check extra)
-        
         $this->vacationService->markPremiumAsPaid($vacationPeriod);
-
         return back()->with('success', "Prima vacacional del periodo Año {$vacationPeriod->year_number} marcada como pagada.");
+    }
+
+    // --- NUEVOS MÉTODOS DE GESTIÓN DE PERIODOS ---
+
+    public function storePeriod(Request $request, Employee $employee)
+    {
+        $validated = $request->validate([
+            'year_number'     => [
+                'required', 
+                'integer', 
+                'min:1', 
+                Rule::unique('vacation_periods')->where(function ($query) use ($employee) {
+                    return $query->where('employee_id', $employee->id);
+                })
+            ],
+            'period_start'    => 'required|date',
+            'period_end'      => 'required|date|after:period_start',
+            'days_entitled'   => 'required|numeric|min:0',
+            'days_accrued'    => 'required|numeric|min:0',
+            'days_taken'      => 'required|numeric|min:0',
+            'is_premium_paid' => 'boolean',
+        ]);
+
+        $this->vacationService->createPeriod($employee, $validated);
+
+        return back()->with('success', 'Periodo vacacional creado correctamente.');
+    }
+
+    public function updatePeriod(Request $request, VacationPeriod $vacationPeriod)
+    {
+        $validated = $request->validate([
+            'year_number'     => [
+                'required', 
+                'integer', 
+                'min:1', 
+                Rule::unique('vacation_periods')->where(function ($query) use ($vacationPeriod) {
+                    return $query->where('employee_id', $vacationPeriod->employee_id);
+                })->ignore($vacationPeriod->id)
+            ],
+            'period_start'    => 'required|date',
+            'period_end'      => 'required|date|after:period_start',
+            'days_entitled'   => 'required|numeric|min:0',
+            'days_accrued'    => 'required|numeric|min:0',
+            'days_taken'      => 'required|numeric|min:0',
+            'is_premium_paid' => 'boolean',
+        ]);
+
+        $this->vacationService->updatePeriod($vacationPeriod, $validated);
+
+        return back()->with('success', 'Periodo vacacional actualizado.');
+    }
+
+    public function destroyPeriod(VacationPeriod $vacationPeriod)
+    {
+        $this->vacationService->deletePeriod($vacationPeriod);
+        return back()->with('success', 'Periodo vacacional eliminado.');
     }
 }

@@ -228,6 +228,45 @@ class VacationService
         ]);
     }
 
+    // --- MÉTODOS CRUD MANUALES PARA LA GESTIÓN DESDE UI ---
+    
+    public function createPeriod(Employee $employee, array $data): void
+    {
+        VacationPeriod::create([
+            'employee_id'     => $employee->id,
+            'year_number'     => $data['year_number'],
+            'period_start'    => $data['period_start'],
+            'period_end'      => $data['period_end'],
+            'days_entitled'   => $data['days_entitled'],
+            'days_accrued'    => $data['days_accrued'],
+            'days_taken'      => $data['days_taken'],
+            'is_premium_paid' => $data['is_premium_paid'] ?? false,
+            'premium_paid_at' => ($data['is_premium_paid'] ?? false) ? now() : null,
+        ]);
+    }
+
+    public function updatePeriod(VacationPeriod $period, array $data): void
+    {
+        $period->update([
+            'year_number'     => $data['year_number'],
+            'period_start'    => $data['period_start'],
+            'period_end'      => $data['period_end'],
+            'days_entitled'   => $data['days_entitled'],
+            'days_accrued'    => $data['days_accrued'],
+            'days_taken'      => $data['days_taken'],
+            'is_premium_paid' => $data['is_premium_paid'] ?? false,
+            // Solo actualizamos fecha de pago si se marca como pagado y no tenía fecha antes
+            'premium_paid_at' => ($data['is_premium_paid'] ?? false) 
+                ? ($period->premium_paid_at ?? now()) 
+                : null,
+        ]);
+    }
+
+    public function deletePeriod(VacationPeriod $period): void
+    {
+        $period->delete();
+    }
+
     // --- MÉTODOS EXISTENTES SIN CAMBIOS MAYORES (Solo Helpers) ---
 
     private function getAnnualVacationDays(int $yearsOfService): int
