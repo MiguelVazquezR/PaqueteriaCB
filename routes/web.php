@@ -71,7 +71,11 @@ Route::get('/bonus-generate', function (Request $request) {
 
 use App\Models\Employee;
 use App\Models\Attendance;
+use App\Models\VacationLedger;
+use App\Models\VacationPeriod;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+
 Route::get('/admin/fix-attendances', function (Request $request) {
     
     // Array para guardar los logs y mostrarlos al final
@@ -185,5 +189,109 @@ Route::get('/admin/fix-attendances', function (Request $request) {
     $log[] = "Total de descansos huérfanos reparados: $totalOrphansFixed";
 
     // Usamos <pre> para que los saltos de línea se vean bien en el navegador
+    return "<pre>" . implode("\n", $log) . "</pre>";
+});
+
+// --- RUTA MAESTRA: SINCRONIZAR PERIODOS DE VACACIONES Y PRIMAS ---
+Route::get('/admin/sync-vacation-periods', function () {
+    
+    // --- FUNCIÓN HELPER PARA LA LEY DE VACACIONES ---
+    $getEntitledDays = function ($year) {
+        if ($year <= 0) return 0;
+        if ($year == 1) return 12;
+        if ($year == 2) return 14;
+        if ($year == 3) return 16;
+        if ($year == 4) return 18;
+        if ($year == 5) return 20;
+        if ($year >= 6 && $year <= 10) return 22;
+        if ($year >= 11 && $year <= 15) return 24;
+        if ($year >= 16 && $year <= 20) return 26;
+        if ($year >= 21 && $year <= 25) return 28;
+        if ($year >= 26 && $year <= 30) return 30;
+        return 32;
+    };
+
+    $log = [];
+    $log[] = "INICIANDO SINCRONIZACIÓN DE PERIODOS VACACIONALES...";
+    $log[] = "===================================================";
+    $log[] = "MODO INTELIGENTE: Años pasados se cierran automáticamente. Año actual usa historial real.";
+
+    // Obtenemos empleados activos y sus datos
+    $employees = Employee::where('is_active', true)->get();
+
+    foreach ($employees as $employee) {
+        $log[] = "\nProcesando Empleado: {$employee->first_name} {$employee->last_name} (#{$employee->employee_number})";
+        $log[] = "Fecha de Ingreso: " . $employee->hire_date->toDateString();
+
+        $yearsOfService = $employee->hire_date->diffInYears(now());
+        
+        // Iteramos desde el año 0 (primer año) hasta el año actual
+        for ($i = 0; $i <= $yearsOfService; $i++) {
+            $yearNumber = $i + 1;
+            $periodStart = $employee->hire_date->copy()->addYears($i);
+            $periodEnd = $employee->hire_date->copy()->addYears($i + 1)->subDay();
+            $daysEntitled = $getEntitledDays($yearNumber);
+
+            // Determinar si es un periodo pasado o el actual
+            $isPastPeriod = $periodEnd->isPast();
+            
+            // --- LÓGICA DE DEVENGADO (ACCRUED) ---
+            // Si es pasado, ya devengó todo. Si es actual, proporcional.
+            $daysAccrued = $isPastPeriod 
+                ? $daysEntitled 
+                : ($daysEntitled / 365) * $periodStart->diffInDays(now());
+            
+            // Topeamos accrued a entitled para no generar confusión visual por decimales extra
+            $daysAccrued = min($daysAccrued, $daysEntitled);
+
+            // --- LÓGICA DE TOMADO (TAKEN) ---
+            $daysTaken = 0;
+
+            if ($isPastPeriod) {
+                // CASO 1: AÑO PASADO (MIGRACIÓN/CIERRE FORZOSO)
+                // Como el sistema es nuevo, asumimos que todos los años anteriores ya fueron consumidos/pagados.
+                $daysTaken = $daysEntitled;
+            } else {
+                // CASO 2: AÑO ACTUAL/FUTURO
+                // Aquí usamos el historial REAL (Ledger), filtrando solo los registros que caen en ESTE periodo.
+                $daysTaken = VacationLedger::where('employee_id', $employee->id)
+                    ->where('type', 'taken')
+                    ->whereDate('date', '>=', $periodStart)
+                    ->whereDate('date', '<=', $periodEnd)
+                    ->sum(DB::raw('ABS(days)')); // Usamos ABS porque se guardan en negativo
+            }
+
+            // Crear o actualizar el periodo
+            $period = VacationPeriod::updateOrCreate(
+                [
+                    'employee_id' => $employee->id,
+                    'year_number' => $yearNumber
+                ],
+                [
+                    'period_start' => $periodStart,
+                    'period_end' => $periodEnd,
+                    'days_entitled' => $daysEntitled,
+                    'days_accrued' => $daysAccrued,
+                    'days_taken' => $daysTaken, // Guardamos el cálculo
+                ]
+            );
+
+            // --- LÓGICA DE PRIMA VACACIONAL ---
+            // Si el año es pasado, asumimos prima pagada para no generar alertas falsas.
+            if ($isPastPeriod && !$period->is_premium_paid) {
+                $period->update([
+                    'is_premium_paid' => true,
+                    'premium_paid_at' => $periodEnd, // Usamos fecha fin de periodo como referencia
+                ]);
+                $log[] = "   - Año {$yearNumber} (Pasado): CERRADO AUTOMÁTICAMENTE (Tomados: {$daysTaken}/{$daysEntitled}) y Prima Pagada.";
+            } elseif (!$isPastPeriod) {
+                // Para el año actual, solo informamos
+                $log[] = "   - Año {$yearNumber} (ACTUAL): En curso. Tomados: {$daysTaken} (Según historial). Devengados: " . number_format($daysAccrued, 2);
+            }
+        }
+    }
+
+    $log[] = "\n===================================================";
+    $log[] = "PROCESO COMPLETADO.";
     return "<pre>" . implode("\n", $log) . "</pre>";
 });
