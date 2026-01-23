@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { Head, Link, useForm, usePage, router } from '@inertiajs/vue3';
-import { useConfirmDelete } from '@/Composables/useConfirmDelete'; // <-- 1. IMPORTAR COMPOSABLE
+import { useConfirmDelete } from '@/Composables/useConfirmDelete'; 
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { PrimeIcons } from '@primevue/core/api';
 import { format } from 'date-fns';
@@ -16,7 +16,7 @@ const props = defineProps({
 });
 
 // --- Refs and State ---
-const { confirmDelete } = useConfirmDelete(); // <-- 2. INSTANCIAR COMPOSABLE
+const { confirmDelete } = useConfirmDelete(); 
 const home = ref({ icon: 'pi pi-home', url: route('dashboard') });
 const items = ref([
     { label: 'Usuarios', url: route('users.index'), icon: PrimeIcons.USER },
@@ -116,12 +116,25 @@ const saveTransaction = () => {
     });
 };
 
-// --- 3. REFACTORIZAR MÉTODO DE CONFIRMACIÓN ---
 const confirmDeleteTransaction = (ledgerId) => {
     confirmDelete({
-        item: { id: ledgerId }, // El composable espera un objeto con `id`
+        item: { id: ledgerId }, 
         routeName: 'vacations.destroyTransaction',
         message: '¿Estás seguro de que quieres eliminar este registro? Esta acción recalculará el saldo de vacaciones del empleado.',
+    });
+};
+
+// --- MÉTODO PARA PAGAR PRIMA VACACIONAL ---
+const markPremiumAsPaid = (periodId, yearNumber) => {
+    // Usamos el composable de confirmación o un confirm nativo simple si prefieres
+    // Aquí usaremos confirmDelete adaptado o uno simple ya que no es "Delete"
+    if(!confirm(`¿Confirmas que se ha pagado la prima vacacional correspondiente al Año ${yearNumber}?`)) return;
+
+    router.post(route('vacations.markPremiumAsPaid', periodId), {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            // Notificación de éxito manejada por flash messages globales
+        }
     });
 };
 
@@ -141,6 +154,16 @@ const formatDate = (dateString) => {
     try {
         const date = new Date(dateString);
         return format(date, "d 'de' MMMM 'de' yyyy", { locale: es });
+    } catch (error) {
+        return '-';
+    }
+};
+
+const formatDateShort = (dateString) => {
+    if (!dateString) return '-';
+    try {
+        const date = new Date(dateString);
+        return format(date, "dd/MM/yyyy", { locale: es });
     } catch (error) {
         return '-';
     }
@@ -175,6 +198,11 @@ const calculateDayTotalHours = (detail) => {
     const diffHours = (end - start) / (1000 * 60 * 60);
     const mealHours = (detail.meal_minutes || 0) / 60;
     return diffHours - mealHours;
+};
+
+// Helper para saber si un periodo está "Completo" (días tomados >= días otorgados)
+const isPeriodExhausted = (period) => {
+    return parseFloat(period.days_taken) >= (parseFloat(period.days_entitled) - 0.1);
 };
 
 </script>
@@ -263,14 +291,83 @@ const calculateDayTotalHours = (detail) => {
                         </div>
                     </div>
 
-                    <!-- Card: Historial de vacaciones -->
+                    <!-- NUEVA CARD: PERIODOS VACACIONALES -->
+                    <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Periodos y Primas Vacacionales</h2>
+                                <p class="text-sm text-gray-500">Estado de vacaciones por año de servicio.</p>
+                            </div>
+                        </div>
+
+                        <DataTable :value="user.employee?.vacation_periods" size="small" stripedRows tableStyle="min-width: 50rem">
+                            <Column field="year_number" header="Año">
+                                <template #body="{ data }">
+                                    <span class="font-bold">Año {{ data.year_number }}</span>
+                                    <div class="text-xs text-gray-500">
+                                        {{ formatDateShort(data.period_start) }} - {{ formatDateShort(data.period_end) }}
+                                    </div>
+                                </template>
+                            </Column>
+                            <Column header="Días">
+                                <template #body="{ data }">
+                                    <div class="text-sm">
+                                        <div class="flex justify-between mb-1">
+                                            <span>Otorgados:</span>
+                                            <span class="font-medium">{{ parseFloat(data.days_entitled) }}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span>Tomados:</span>
+                                            <span class="font-medium text-blue-600">{{ parseFloat(data.days_taken) }}</span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </Column>
+                            <Column header="Estado">
+                                <template #body="{ data }">
+                                    <Tag v-if="isPeriodExhausted(data)" value="Completado" severity="info" />
+                                    <Tag v-else value="En curso" severity="success" />
+                                </template>
+                            </Column>
+                            <Column header="Prima Vacacional">
+                                <template #body="{ data }">
+                                    <div v-if="data.is_premium_paid" class="flex items-center text-green-600 gap-2">
+                                        <i class="pi pi-check-circle text-xl"></i>
+                                        <div class="flex flex-col">
+                                            <span class="font-bold text-sm">Pagada</span>
+                                            <span class="text-xs text-gray-500">{{ formatDateShort(data.premium_paid_at) }}</span>
+                                        </div>
+                                    </div>
+                                    <div v-else>
+                                        <!-- Si el periodo ya se agotó (se tomaron los días), sugerimos pagar -->
+                                        <Button 
+                                            v-if="isPeriodExhausted(data)"
+                                            label="Pagar Prima" 
+                                            icon="pi pi-wallet" 
+                                            severity="warning" 
+                                            size="small" 
+                                            @click="markPremiumAsPaid(data.id, data.year_number)"
+                                            v-tooltip.top="'El empleado ya tomó sus vacaciones de este año'"
+                                        />
+                                        <!-- Si no se ha agotó, mostramos pendiente normal -->
+                                        <span v-else class="text-gray-400 text-sm italic">Pendiente (Aún tiene días)</span>
+                                    </div>
+                                </template>
+                            </Column>
+                            <template #empty>
+                                <div class="text-center p-4 text-gray-500">
+                                    No hay periodos registrados. (Se generarán automáticamente al primer movimiento).
+                                </div>
+                            </template>
+                        </DataTable>
+                    </div>
+
+                    <!-- Card: Historial de vacaciones (Ledger) -->
                     <div class="bg-white dark:bg-neutral-900 shadow-md rounded-lg p-6">
                         <div class="flex flex-col sm:flex-row justify-between items-start mb-4">
                             <div>
-                                <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Historial de
-                                    vacaciones</h2>
-                                <p class="text-sm text-gray-500">Visualiza y gestiona el historial de vacaciones del
-                                    empleado.</p>
+                                <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Historial de movimientos</h2>
+                                <p class="text-sm text-gray-500">Bitácora detallada de transacciones.</p>
                             </div>
                             <div class="flex gap-2 mt-4 sm:mt-0">
                                 <SplitButton v-if="hasPermission('vacaciones_usuarios')" label="Ajustar saldo inicial"
@@ -285,7 +382,7 @@ const calculateDayTotalHours = (detail) => {
                                     {{ formatDate(data.date) }}
                                 </template>
                             </Column>
-                            <Column field="type" header="Tipo de movimiento">
+                            <Column field="type" header="Tipo">
                                 <template #body="{ data }">
                                     <div class="flex items-center">
                                         <span>{{ translateVacationType(data.type) }}</span>
@@ -296,7 +393,7 @@ const calculateDayTotalHours = (detail) => {
                                 </template>
                             </Column>
                             <Column field="days" header="Días"></Column>
-                            <Column field="balance" header="Saldo"></Column>
+                            <Column field="balance" header="Saldo Global"></Column>
                             <Column header="Acciones" style="min-width: 5rem; text-align: center;">
                                 <template #body="{ data }">
                                     <Button v-if="hasPermission('vacaciones_usuarios')" icon="pi pi-trash" text rounded
@@ -312,13 +409,13 @@ const calculateDayTotalHours = (detail) => {
                             </template>
                         </DataTable>
 
-                        <!-- SECCIÓN DE RESUMEN DE VACACIONES (MOVIDA AQUÍ) -->
+                        <!-- SECCIÓN DE RESUMEN DE VACACIONES -->
                         <div
                             class="mt-6 p-4 bg-gray-50 dark:bg-neutral-800 rounded-lg flex flex-col sm:flex-row justify-around items-center gap-4 text-center">
                             <div class="flex items-center gap-3">
                                 <AvionIcon class="size-8 text-blue-500" />
                                 <div>
-                                    <p class="text-gray-500 dark:text-gray-400 text-sm">Días disponibles</p>
+                                    <p class="text-gray-500 dark:text-gray-400 text-sm">Días disponibles (Global)</p>
                                     <span class="font-bold text-2xl text-blue-600 dark:text-blue-400">{{
                                         availableVacationDays.toFixed(2) }}</span>
                                 </div>
