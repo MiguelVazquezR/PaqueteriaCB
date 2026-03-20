@@ -295,3 +295,65 @@ Route::get('/admin/sync-vacation-periods', function () {
     $log[] = "PROCESO COMPLETADO.";
     return "<pre>" . implode("\n", $log) . "</pre>";
 });
+
+// --- NUEVA RUTA: CORREGIR DESFASE HORARIO (RESTAR 1 HORA) ---
+// ATENCIÓN: Solo debes ejecutar esto UNA VEZ en el navegador visitando /admin/fix-time-offset
+Route::get('/admin/fix-time-offset', function () {
+    $log = [];
+    $log[] = "INICIANDO CORRECCIÓN DE ZONA HORARIA (-1 HORA)...";
+    $log[] = "===================================================================";
+    
+    // Obtenemos el año actual automáticamente para generar las fechas
+    $year = now()->year;
+    
+    // Definimos los rangos de fechas afectados donde hubo desfase
+    $ranges = [
+        // Del 8 al 18 de Marzo (ambos incluidos, cubriendo todo el día)
+        ['start' => "$year-03-08 00:00:00", 'end' => "$year-03-18 23:59:59"],
+        // El día 20 de Marzo (cubriendo todo el día)
+        ['start' => "$year-03-20 00:00:00", 'end' => "$year-03-20 23:59:59"],
+    ];
+
+    $totalFixed = 0;
+
+    foreach ($ranges as $range) {
+        $log[] = "\nBuscando registros afectados entre {$range['start']} y {$range['end']}...";
+
+        // Obtenemos las asistencias registradas dentro de esos intervalos
+        $attendances = Attendance::whereBetween('created_at', [$range['start'], $range['end']])->get();
+
+        if ($attendances->isEmpty()) {
+            $log[] = "  -> No se encontraron registros en este rango temporal.";
+            continue;
+        }
+
+        foreach ($attendances as $attendance) {
+            // Guardamos la hora original parseando con Carbon explícitamente para evitar errores de tipo string
+            $originalTime = \Carbon\Carbon::parse($attendance->created_at)->format('Y-m-d H:i:s');
+
+            // Calculamos y guardamos las nuevas fechas en variables
+            $newCreatedAt = \Carbon\Carbon::parse($attendance->created_at)->subHour();
+            $newUpdatedAt = \Carbon\Carbon::parse($attendance->updated_at)->subHour();
+
+            // Las reasignamos
+            $attendance->created_at = $newCreatedAt;
+            $attendance->updated_at = $newUpdatedAt;
+
+            // Esto es crucial: le decimos a Eloquent que no actualice el 'updated_at' 
+            // a la hora de AHORA MISMO, sino que respete el cálculo de arriba
+            $attendance->timestamps = false;
+            $attendance->save();
+
+            $totalFixed++;
+            
+            // Usamos nuestra variable segura de Carbon ($newCreatedAt) para el log final
+            $log[] = "  [Ajustado] ID: {$attendance->id} | {$originalTime}  =>  {$newCreatedAt->format('Y-m-d H:i:s')}";
+        }
+    }
+
+    $log[] = "\n===================================================================";
+    $log[] = "PROCESO COMPLETADO EXITOSAMENTE.";
+    $log[] = "Total de registros de asistencia retrocedidos 1 hora: $totalFixed";
+
+    return "<pre>" . implode("\n", $log) . "</pre>";
+});
