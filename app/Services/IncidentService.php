@@ -448,16 +448,39 @@ class IncidentService
     {
         $date = Carbon::parse($validatedData['date']);
         $breakStart = Attendance::find($validatedData['start_id']);
-        $breakEnd = Attendance::find($validatedData['end_id']);
+        $breakEnd = isset($validatedData['end_id']) ? Attendance::find($validatedData['end_id']) : null;
 
-        if ($breakStart && $breakEnd) {
+        if ($breakStart) {
+            // Actualizamos la hora de inicio del descanso
             $breakStart->update(['created_at' => $date->copy()->setTimeFromTimeString($validatedData['start_time'])]);
-            $breakEnd->update(['created_at' => $date->copy()->setTimeFromTimeString($validatedData['end_time'])]);
+            
+            $endDateTime = $date->copy()->setTimeFromTimeString($validatedData['end_time']);
+
+            if ($breakEnd) {
+                // Si ya existía el fin del descanso, lo actualizamos
+                $breakEnd->update(['created_at' => $endDateTime]);
+            } else {
+                // Si el descanso era huérfano, creamos el nuevo registro de fin de descanso
+                Attendance::create([
+                    'employee_id' => $breakStart->employee_id,
+                    'type'        => 'break_end',
+                    'created_at'  => $endDateTime,
+                    'updated_at'  => $endDateTime,
+                ]);
+            }
         }
     }
 
     public function destroyBreak(array $validatedData): void
     {
-        Attendance::destroy([$validatedData['start_id'], $validatedData['end_id']]);
+        // Filtramos para asegurarnos de no pasar valores nulos a destroy()
+        $idsToDelete = array_filter([
+            $validatedData['start_id'] ?? null, 
+            $validatedData['end_id'] ?? null
+        ]);
+
+        if (!empty($idsToDelete)) {
+            Attendance::destroy($idsToDelete);
+        }
     }
 }
