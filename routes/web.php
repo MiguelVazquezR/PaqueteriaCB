@@ -357,3 +357,56 @@ Route::get('/admin/fix-time-offset', function () {
 
     return "<pre>" . implode("\n", $log) . "</pre>";
 });
+
+// --- NUEVA RUTA: CORREGIR DESFASE HORARIO (SUMAR 1 HORA DEL 7 AL 31 DE MARZO) ---
+// ATENCIÓN: Solo debes ejecutar esto UNA VEZ en el navegador visitando /admin/fix-time-add-hour
+Route::get('/admin/fix-time-add-hour', function () {
+    $log = [];
+    $log[] = "INICIANDO CORRECCIÓN DE ZONA HORARIA (+1 HORA)...";
+    $log[] = "===================================================================";
+    
+    // Obtenemos el año actual
+    $year = now()->year;
+    
+    // Rango afectado: Del 7 al 31 de Marzo
+    $range = ['start' => "$year-03-07 00:00:00", 'end' => "$year-03-31 23:59:59"];
+
+    $totalFixed = 0;
+
+    $log[] = "\nBuscando registros afectados entre {$range['start']} y {$range['end']}...";
+
+    // Obtenemos las asistencias registradas dentro de ese intervalo
+    $attendances = Attendance::whereBetween('created_at', [$range['start'], $range['end']])->get();
+
+    if ($attendances->isEmpty()) {
+        $log[] = "  -> No se encontraron registros en este rango temporal.";
+    } else {
+        foreach ($attendances as $attendance) {
+            // Guardamos la hora original
+            $originalTime = \Carbon\Carbon::parse($attendance->created_at)->format('Y-m-d H:i:s');
+
+            // Sumamos 1 hora a los timestamps
+            $newCreatedAt = \Carbon\Carbon::parse($attendance->created_at)->addHour();
+            $newUpdatedAt = \Carbon\Carbon::parse($attendance->updated_at)->addHour();
+
+            // Reasignamos las nuevas fechas
+            $attendance->created_at = $newCreatedAt;
+            $attendance->updated_at = $newUpdatedAt;
+
+            // Evitamos que Eloquent pise el updated_at con la hora actual de la ejecución
+            $attendance->timestamps = false;
+            $attendance->save();
+
+            $totalFixed++;
+            
+            // Log de la operación para visualizar los cambios
+            $log[] = "  [Ajustado] ID: {$attendance->id} | {$originalTime}  =>  {$newCreatedAt->format('Y-m-d H:i:s')}";
+        }
+    }
+
+    $log[] = "\n===================================================================";
+    $log[] = "PROCESO COMPLETADO EXITOSAMENTE.";
+    $log[] = "Total de registros de asistencia adelantados 1 hora: $totalFixed";
+
+    return "<pre>" . implode("\n", $log) . "</pre>";
+});
