@@ -36,11 +36,12 @@ class IncidentController extends Controller implements HasMiddleware
             $request,
             PayrollPeriod::query(),
             searchableColumns: ['week_number'],
-            defaultSort: 'week_number',
-            sortableColumns: ['week_number', 'payment_date'] // Agregamos más columnas si es necesario
-        )->orderBy('week_number', $request->input('sort_direction', 'desc'));
+            defaultSort: 'start_date',
+            sortableColumns: ['start_date', 'week_number', 'payment_date'],
+            defaultSortDirection: 'desc'
+        );
 
-        $periods = $query->paginate($request->input('per_page', 20))->withQueryString();
+        $periods = $query->paginate($request->input('per_page', 100))->withQueryString();
 
         return Inertia::render('Incident/Index', [
             'periods' => $periods,
