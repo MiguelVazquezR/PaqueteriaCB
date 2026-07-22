@@ -43,7 +43,11 @@ class EmployeeResource extends JsonResource
                     'details' => $schedule->details,
                 ])
             ),
+            // Historial de movimientos (Ledger)
             'vacation_history' => $this->whenLoaded('vacationLedger'),
+            
+            // --- NUEVO: Periodos de Vacaciones (Años) ---
+            'vacation_periods' => $this->whenLoaded('vacationPeriods'),
         ];
     }
 }

@@ -48,11 +48,12 @@ const onRowSelect = (event) => {
                 <div class="overflow-x-auto">
                     <DataTable
                         :value="periods.data"
+                        lazy
                         @sort="onSort"
                         @row-select="onRowSelect"
                         selectionMode="single"
                         dataKey="id"
-                        :sortField="filters.sort_by || 'payment_date'"
+                        :sortField="filters.sort_by || 'start_date'"
                         :sortOrder="filters.sort_direction === 'asc' ? 1 : -1"
                         removableSort
                         class="cursor-pointer">
@@ -90,7 +91,7 @@ const onRowSelect = (event) => {
                     :first="periods.from - 1"
                     :rows="periods.per_page"
                     :totalRecords="periods.total"
-                    :rowsPerPageOptions="[10, 20, 30, 50]"
+                    :rowsPerPageOptions="[10, 20, 30, 50, 100]"
                     @page="onPage"
                     class="p-6 border-t border-gray-200 dark:border-gray-700" />
             </div>

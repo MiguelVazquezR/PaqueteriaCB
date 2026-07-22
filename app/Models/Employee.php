@@ -33,7 +33,7 @@ class Employee extends Model
         'emergency_contact_phone',
         'emergency_contact_relationship',
         'is_active',
-        'vacation_balance',
+        'vacation_balance', // Seguiremos usando esto como el "Total Global" para consultas rápidas
         'termination_date',
         'termination_reason',
     ];
@@ -64,18 +64,12 @@ class Employee extends Model
 
     /**
      * Scope a query to only include employees active within a given date range.
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @param  \Carbon\Carbon  $startDate
-     * @param  \Carbon\Carbon  $endDate
-     * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeActiveDuring(Builder $query, Carbon $startDate, Carbon $endDate): Builder
     {
         return $query->where('is_active', true)
-            ->where('hire_date', '<=', $endDate) // Contratados antes o durante el período
+            ->where('hire_date', '<=', $endDate)
             ->where(function ($subQuery) use ($startDate) {
-                // Que no hayan sido despedidos antes de que inicie el período
                 $subQuery->whereNull('termination_date')
                     ->orWhere('termination_date', '>=', $startDate);
             });
@@ -120,9 +114,16 @@ class Employee extends Model
      */
     public function vacationLedger(): HasMany
     {
-        // Un empleado tiene muchos registros en el historial de vacaciones.
-        // Se ordena por fecha y luego por ID para mantener un orden consistente.
         return $this->hasMany(VacationLedger::class)->orderBy('date')->orderBy('id');
+    }
+
+    /**
+     * Relación con los periodos de vacaciones (años de servicio).
+     * Esto nos permitirá separar año con año.
+     */
+    public function vacationPeriods(): HasMany
+    {
+        return $this->hasMany(VacationPeriod::class)->orderBy('year_number');
     }
 
     /**
@@ -133,11 +134,6 @@ class Employee extends Model
         return $this->hasMany(EmployeePeriodNote::class);
     }
 
-    /**
-     * Obtiene el nombre completo del empleado.
-     *
-     * @return \Illuminate\Database\Eloquent\Casts\Attribute
-     */
     protected function fullName(): Attribute
     {
         return Attribute::make(
