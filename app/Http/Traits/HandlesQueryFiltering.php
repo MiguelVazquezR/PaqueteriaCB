@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 
 trait HandlesQueryFiltering
 {
-    protected function applyFilters(Request $request, Builder $query, array $searchableColumns, string $defaultSort, array $sortableColumns): Builder
+    protected function applyFilters(Request $request, Builder $query, array $searchableColumns, string $defaultSort, array $sortableColumns, string $defaultSortDirection = 'asc'): Builder
     {
         // Búsqueda
         $query->when($request->input('search'), function ($q, $search) use ($searchableColumns) {
@@ -20,7 +20,7 @@ trait HandlesQueryFiltering
 
         // Ordenamiento
         $sortBy = $request->input('sort_by', $defaultSort);
-        $sortDirection = $request->input('sort_direction', 'asc');
+        $sortDirection = $request->input('sort_direction', $defaultSortDirection);
 
         if (in_array($sortBy, $sortableColumns)) {
             $query->orderBy($sortBy, $sortDirection);

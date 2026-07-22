@@ -15,7 +15,8 @@ class DestroyBreakRequest extends FormRequest
     {
         return [
             'start_id' => 'required|exists:attendances,id',
-            'end_id'   => 'required|exists:attendances,id',
+            // Cambiado a nullable por si se requiere eliminar un descanso huérfano
+            'end_id'   => 'nullable|exists:attendances,id', 
         ];
     }
 }

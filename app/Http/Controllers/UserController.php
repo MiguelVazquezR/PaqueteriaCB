@@ -117,7 +117,9 @@ class UserController extends Controller implements HasMiddleware
 
     public function show(User $user)
     {
-        $user->load(['employee.branch', 'employee.schedules.details', 'employee.vacationLedger']);
+        // CAMBIO AQUÍ: Agregamos 'employee.vacationPeriods' a la carga de relaciones
+        $user->load(['employee.branch', 'employee.schedules.details', 'employee.vacationLedger', 'employee.vacationPeriods']);
+        
         // return UserResource::make($user);
         return Inertia::render('User/Show', [
             'user' => UserResource::make($user),
