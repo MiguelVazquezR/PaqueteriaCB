@@ -60,7 +60,7 @@ const submit = () => {
             ...day,
             start_time: day.is_active && day.start_time ? format(new Date(day.start_time), 'HH:mm') : null,
             end_time: day.is_active && day.end_time ? format(new Date(day.end_time), 'HH:mm') : null,
-            meal_minutes: day.is_active ? day.meal_minutes : 0,
+            meal_minutes: day.is_active ? (day.meal_minutes || 0) : 0,
         }))
     })).post(route('settings.schedules.store'));
 };
